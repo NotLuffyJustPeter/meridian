@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
@@ -19,5 +19,13 @@ export class TripsController {
     dto: CreateTripDto,
   ) {
     return this.tripsService.create(user.sub, dto);
+  }
+
+  @Get()
+  findAll(
+    @CurrentUser()
+    user: AccessTokenPayload,
+  ) {
+    return this.tripsService.findAllOwned(user.sub);
   }
 }

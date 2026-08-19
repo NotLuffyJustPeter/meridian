@@ -44,6 +44,22 @@ export class TripsService {
     });
   }
 
+  async findAllOwned(ownerId: string) {
+    return this.prisma.trip.findMany({
+      where: {
+        ownerId,
+      },
+      orderBy: [
+        {
+          startDate: 'asc',
+        },
+        {
+          createdAt: 'desc',
+        },
+      ],
+    });
+  }
+
   async findOwnedTripOrThrow(ownerId: string, tripId: string) {
     const trip = await this.prisma.trip.findFirst({
       where: {
