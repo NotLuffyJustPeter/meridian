@@ -29,10 +29,11 @@ COPY apps/api ./apps/api
 
 ENV DATABASE_URL=postgresql://meridian:build-only@localhost:5432/meridian
 
+RUN find /app/apps/api -name "*.tsbuildinfo" -delete \
+    && rm -rf /app/apps/api/dist
+
 RUN pnpm --filter @meridian/api exec prisma generate
 RUN pnpm --filter @meridian/api build
-
-
 # ============================================================
 # API RUNTIME
 # ============================================================
