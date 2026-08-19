@@ -39,3 +39,6 @@ apps/api/src/generated/prisma/
 
 # Temporary files
 *.bak
+
+*.tsbuildinfo
+**/*.tsbuildinfo
