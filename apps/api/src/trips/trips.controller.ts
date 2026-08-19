@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+﻿import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
@@ -27,5 +27,20 @@ export class TripsController {
     user: AccessTokenPayload,
   ) {
     return this.tripsService.findAllOwned(user.sub);
+  }
+
+  @Get(':id')
+  findOne(
+    @CurrentUser()
+    user: AccessTokenPayload,
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        version: '4',
+      }),
+    )
+    tripId: string,
+  ) {
+    return this.tripsService.findOwnedTripOrThrow(user.sub, tripId);
   }
 }
