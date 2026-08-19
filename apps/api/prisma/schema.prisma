@@ -18,6 +18,12 @@ enum UserRole {
   ADMIN
 }
 
+enum TripStatus {
+  DRAFT
+  PLANNED
+  ARCHIVED
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -28,6 +34,7 @@ model User {
   updatedAt    DateTime @updatedAt
 
   authSessions AuthSession[]
+  trips        Trip[]
 
   @@map("users")
 }
@@ -46,4 +53,25 @@ model AuthSession {
   @@index([userId])
   @@index([expiresAt])
   @@map("auth_sessions")
+}
+
+model Trip {
+  id          String     @id @default(uuid())
+  ownerId     String
+  name        String
+  destination String
+  startDate   DateTime
+  endDate     DateTime
+  timezone    String
+  currency    String
+  status      TripStatus @default(DRAFT)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@index([ownerId, status])
+  @@index([ownerId, startDate])
+  @@map("trips")
 }
