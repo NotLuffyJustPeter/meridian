@@ -38,6 +38,9 @@ services:
 
     restart: unless-stopped
 
+    env_file:
+      - ./apps/api/.env
+
     environment:
       NODE_ENV: production
       PORT: 3001
@@ -78,6 +81,9 @@ services:
     environment:
       NODE_ENV: production
       API_ORIGIN: http://api:3001
+      AUTH_COOKIE_SECURE: "false"
+      AUTH_ACCESS_COOKIE_MAX_AGE_SECONDS: "900"
+      AUTH_REFRESH_COOKIE_MAX_AGE_SECONDS: "604800"
 
     depends_on:
       api:
