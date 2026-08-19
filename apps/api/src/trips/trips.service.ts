@@ -156,6 +156,19 @@ export class TripsService {
     return this.findOwnedTripOrThrow(ownerId, tripId);
   }
 
+  async remove(ownerId: string, tripId: string): Promise<void> {
+    const result = await this.prisma.trip.deleteMany({
+      where: {
+        id: tripId,
+        ownerId,
+      },
+    });
+
+    if (result.count === 0) {
+      throw new NotFoundException('Trip not found');
+    }
+  }
+
   private validateTimezone(timezone: string): void {
     try {
       new Intl.DateTimeFormat('en-US', {

@@ -1,7 +1,10 @@
 ﻿import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -69,5 +72,21 @@ export class TripsController {
     dto: UpdateTripDto,
   ) {
     return this.tripsService.update(user.sub, tripId, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(
+    @CurrentUser()
+    user: AccessTokenPayload,
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        version: '4',
+      }),
+    )
+    tripId: string,
+  ): Promise<void> {
+    await this.tripsService.remove(user.sub, tripId);
   }
 }
