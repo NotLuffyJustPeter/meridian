@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 
 import { PrismaService } from '../database/prisma.service';
 import { CreateTripDto } from './dto/create-trip.dto';
+import { UpdateTripDto } from './dto/update-trip.dto';
 
 @Injectable()
 export class TripsService {
@@ -73,6 +74,86 @@ export class TripsService {
     }
 
     return trip;
+  }
+
+  async update(ownerId: string, tripId: string, dto: UpdateTripDto) {
+    const hasUpdates =
+      dto.name !== undefined ||
+      dto.destination !== undefined ||
+      dto.startDate !== undefined ||
+      dto.endDate !== undefined ||
+      dto.timezone !== undefined ||
+      dto.currency !== undefined ||
+      dto.status !== undefined;
+
+    if (!hasUpdates) {
+      throw new BadRequestException('At least one field must be provided');
+    }
+
+    const existing = await this.findOwnedTripOrThrow(ownerId, tripId);
+    const name = dto.name !== undefined ? dto.name.trim() : undefined;
+
+    const destination = dto.destination !== undefined ? dto.destination.trim() : undefined;
+
+    const timezone = dto.timezone !== undefined ? dto.timezone.trim() : undefined;
+
+    const currency = dto.currency !== undefined ? dto.currency.trim().toUpperCase() : undefined;
+
+    if (name !== undefined && !name) {
+      throw new BadRequestException('Trip name is required');
+    }
+
+    if (destination !== undefined && !destination) {
+      throw new BadRequestException('Destination is required');
+    }
+
+    if (timezone !== undefined) {
+      this.validateTimezone(timezone);
+    }
+
+    const startDate = dto.startDate !== undefined ? new Date(dto.startDate) : existing.startDate;
+
+    const endDate = dto.endDate !== undefined ? new Date(dto.endDate) : existing.endDate;
+
+    if (endDate < startDate) {
+      throw new BadRequestException('endDate must be on or after startDate');
+    }
+
+    const result = await this.prisma.trip.updateMany({
+      where: {
+        id: tripId,
+        ownerId,
+      },
+      data: {
+        ...(name !== undefined && {
+          name,
+        }),
+        ...(destination !== undefined && {
+          destination,
+        }),
+        ...(dto.startDate !== undefined && {
+          startDate,
+        }),
+        ...(dto.endDate !== undefined && {
+          endDate,
+        }),
+        ...(timezone !== undefined && {
+          timezone,
+        }),
+        ...(currency !== undefined && {
+          currency,
+        }),
+        ...(dto.status !== undefined && {
+          status: dto.status,
+        }),
+      },
+    });
+
+    if (result.count === 0) {
+      throw new NotFoundException('Trip not found');
+    }
+
+    return this.findOwnedTripOrThrow(ownerId, tripId);
   }
 
   private validateTimezone(timezone: string): void {
