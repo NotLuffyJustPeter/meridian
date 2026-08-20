@@ -1,11 +1,15 @@
 'use client';
 
 import Link from 'next/link';
+import type {
+  ReactNode,
+} from 'react';
 import {
   useEffect,
   useState,
 } from 'react';
 
+import { ItineraryTimeline } from '../../itinerary/components/itinerary-timeline';
 import type {
   Trip,
   TripStatus,
@@ -33,6 +37,10 @@ type TripWorkspaceState =
       error: string;
     };
 
+type WorkspaceTab =
+  | 'overview'
+  | 'itinerary';
+
 function isRecord(
   value: unknown,
 ): value is Record<
@@ -40,7 +48,8 @@ function isRecord(
   unknown
 > {
   return (
-    typeof value === 'object' &&
+    typeof value ===
+      'object' &&
     value !== null
   );
 }
@@ -50,7 +59,8 @@ function readTrip(
 ): Trip | null {
   if (
     isRecord(payload) &&
-    typeof payload.id === 'string'
+    typeof payload.id ===
+      'string'
   ) {
     return payload as unknown as Trip;
   }
@@ -74,10 +84,12 @@ function readErrorMessage(
     return 'Unable to load this journey.';
   }
 
-  const { message } = payload;
+  const { message } =
+    payload;
 
   if (
-    typeof message === 'string'
+    typeof message ===
+    'string'
   ) {
     return message;
   }
@@ -86,7 +98,8 @@ function readErrorMessage(
     Array.isArray(message) &&
     message.every(
       (item) =>
-        typeof item === 'string',
+        typeof item ===
+        'string',
     )
   ) {
     return message.join(', ');
@@ -118,7 +131,8 @@ async function fetchTripState(
       await response.json();
 
     if (
-      response.status === 404
+      response.status ===
+      404
     ) {
       return {
         status: 'not-found',
@@ -415,7 +429,7 @@ function WorkspaceCard({
   eyebrow: string;
   title: string;
   description: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   accent?: boolean;
 }) {
   return (
@@ -504,6 +518,199 @@ function NotFoundState() {
   );
 }
 
+function OverviewContent({
+  trip,
+}: {
+  trip: Trip;
+}) {
+  return (
+    <section className="grid gap-6 py-9 lg:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.6fr)]">
+      <div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300">
+            Overview
+          </p>
+
+          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-white">
+            Journey foundation
+          </h2>
+
+          <p className="mt-3 max-w-xl text-sm leading-6 text-slate-500">
+            The core travel details
+            are ready. Your itinerary
+            is now connected to this
+            workspace and the next
+            planning layers can build
+            on top of it.
+          </p>
+        </div>
+
+        <div className="mt-7 grid gap-4 md:grid-cols-3">
+          <WorkspaceCard
+            eyebrow="Ready"
+            title="Plan itinerary"
+            description="Organize the journey into real days and activities."
+            icon={
+              <CalendarIcon />
+            }
+            accent
+          />
+
+          <WorkspaceCard
+            eyebrow="Next"
+            title="Save places"
+            description="Collect restaurants, landmarks and places worth visiting."
+            icon={
+              <PinIcon />
+            }
+          />
+
+          <WorkspaceCard
+            eyebrow="Later"
+            title="Track budget"
+            description="Keep travel spending and the trip budget in one place."
+            icon={
+              <WalletIcon />
+            }
+          />
+        </div>
+
+        <div className="mt-8 overflow-hidden rounded-[1.75rem] border border-white/[0.07] bg-white/[0.025]">
+          <div className="flex items-center justify-between border-b border-white/[0.07] px-6 py-5">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Travel window
+              </p>
+
+              <p className="mt-1 text-sm font-medium text-white">
+                Journey dates
+              </p>
+            </div>
+
+            <CalendarIcon />
+          </div>
+
+          <div className="grid gap-px bg-white/[0.06] sm:grid-cols-2">
+            <div className="bg-[#09131e] p-6">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Departure
+              </p>
+
+              <p className="mt-3 text-sm font-medium text-slate-200">
+                {formatLongDate(
+                  trip.startDate,
+                )}
+              </p>
+            </div>
+
+            <div className="bg-[#09131e] p-6">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Return
+              </p>
+
+              <p className="mt-3 text-sm font-medium text-slate-200">
+                {formatLongDate(
+                  trip.endDate,
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside>
+        <div className="sticky top-8 overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-white/[0.025]">
+          <div className="relative h-44 overflow-hidden bg-[linear-gradient(145deg,#0d2a39,#11384b_55%,#09141e)]">
+            <div className="absolute -right-12 -top-20 h-44 w-44 rounded-full border border-sky-200/10 bg-sky-300/[0.04]" />
+
+            <div className="absolute left-6 top-6 flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-black/10 text-sky-200">
+              <GlobeIcon />
+            </div>
+
+            <div className="absolute bottom-6 left-6">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-200/50">
+                Destination
+              </p>
+
+              <p className="mt-1 max-w-[15rem] text-lg font-semibold tracking-[-0.025em] text-white">
+                {trip.destination}
+              </p>
+            </div>
+          </div>
+
+          <div className="divide-y divide-white/[0.07]">
+            <div className="p-6">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Workspace
+              </p>
+
+              <p className="mt-3 text-sm leading-6 text-slate-400">
+                This journey now has
+                its own permanent
+                workspace. Everything
+                added to the itinerary
+                belongs directly to
+                this trip.
+              </p>
+            </div>
+
+            <div className="p-6">
+              <div className="flex items-center gap-3">
+                <span className="h-2 w-2 rounded-full bg-sky-300 shadow-[0_0_12px_rgba(125,211,252,0.6)]" />
+
+                <p className="text-xs font-medium text-slate-300">
+                  Workspace ready
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </section>
+  );
+}
+
+function WorkspaceTabButton({
+  active,
+  children,
+  onClick,
+}: {
+  active: boolean;
+  children: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        'border-b-2 px-4 pb-4 pt-2 text-sm transition',
+        active
+          ? 'border-sky-300 font-semibold text-white'
+          : 'border-transparent text-slate-500 hover:text-slate-200',
+      ].join(' ')}
+    >
+      {children}
+    </button>
+  );
+}
+
+function SoonTab({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-2 border-b-2 border-transparent px-4 pb-4 pt-2 text-sm text-slate-600">
+      {children}
+
+      <span className="rounded-full border border-white/[0.06] px-2 py-0.5 text-[9px] uppercase tracking-[0.15em]">
+        Soon
+      </span>
+    </div>
+  );
+}
+
 export function TripWorkspace({
   tripId,
 }: {
@@ -518,6 +725,14 @@ export function TripWorkspace({
       trip: null,
       error: null,
     });
+
+  const [
+    activeTab,
+    setActiveTab,
+  ] =
+    useState<WorkspaceTab>(
+      'overview',
+    );
 
   useEffect(() => {
     let cancelled = false;
@@ -554,7 +769,8 @@ export function TripWorkspace({
   }
 
   if (
-    state.status === 'error'
+    state.status ===
+    'error'
   ) {
     return (
       <div className="rounded-[1.75rem] border border-rose-300/10 bg-rose-300/[0.04] p-7">
@@ -653,9 +869,7 @@ export function TripWorkspace({
             </p>
 
             <h1 className="mt-3 text-4xl font-semibold tracking-[-0.055em] text-white sm:text-5xl lg:text-6xl">
-              {
-                trip.destination
-              }
+              {trip.destination}
             </h1>
 
             <p className="mt-5 max-w-xl text-sm leading-7 text-sky-50/50">
@@ -719,179 +933,55 @@ export function TripWorkspace({
         aria-label="Journey workspace"
         className="mt-10 flex gap-1 overflow-x-auto border-b border-white/[0.07]"
       >
-        <div className="border-b-2 border-sky-300 px-4 pb-4 pt-2 text-sm font-semibold text-white">
+        <WorkspaceTabButton
+          active={
+            activeTab ===
+            'overview'
+          }
+          onClick={() =>
+            setActiveTab(
+              'overview',
+            )
+          }
+        >
           Overview
-        </div>
+        </WorkspaceTabButton>
 
-        <div className="flex items-center gap-2 px-4 pb-4 pt-2 text-sm text-slate-600">
+        <WorkspaceTabButton
+          active={
+            activeTab ===
+            'itinerary'
+          }
+          onClick={() =>
+            setActiveTab(
+              'itinerary',
+            )
+          }
+        >
           Itinerary
+        </WorkspaceTabButton>
 
-          <span className="rounded-full border border-white/[0.06] px-2 py-0.5 text-[9px] uppercase tracking-[0.15em]">
-            Soon
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2 px-4 pb-4 pt-2 text-sm text-slate-600">
+        <SoonTab>
           Places
+        </SoonTab>
 
-          <span className="rounded-full border border-white/[0.06] px-2 py-0.5 text-[9px] uppercase tracking-[0.15em]">
-            Soon
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2 px-4 pb-4 pt-2 text-sm text-slate-600">
+        <SoonTab>
           Budget
-
-          <span className="rounded-full border border-white/[0.06] px-2 py-0.5 text-[9px] uppercase tracking-[0.15em]">
-            Soon
-          </span>
-        </div>
+        </SoonTab>
       </nav>
 
-      <section className="grid gap-6 py-9 lg:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.6fr)]">
-        <div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300">
-              Overview
-            </p>
-
-            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-white">
-              Journey foundation
-            </h2>
-
-            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-500">
-              The core travel details
-              are ready. The next phases
-              will build the planning
-              layers on top of this
-              workspace.
-            </p>
-          </div>
-
-          <div className="mt-7 grid gap-4 md:grid-cols-3">
-            <WorkspaceCard
-              eyebrow="Next"
-              title="Build itinerary"
-              description="Turn the journey into organized days and activities."
-              icon={
-                <CalendarIcon />
-              }
-              accent
-            />
-
-            <WorkspaceCard
-              eyebrow="Then"
-              title="Save places"
-              description="Collect restaurants, landmarks and places worth visiting."
-              icon={
-                <PinIcon />
-              }
-            />
-
-            <WorkspaceCard
-              eyebrow="Later"
-              title="Track budget"
-              description="Keep travel spending and the trip budget in one place."
-              icon={
-                <WalletIcon />
-              }
-            />
-          </div>
-
-          <div className="mt-8 overflow-hidden rounded-[1.75rem] border border-white/[0.07] bg-white/[0.025]">
-            <div className="flex items-center justify-between border-b border-white/[0.07] px-6 py-5">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Travel window
-                </p>
-
-                <p className="mt-1 text-sm font-medium text-white">
-                  Journey dates
-                </p>
-              </div>
-
-              <CalendarIcon />
-            </div>
-
-            <div className="grid gap-px bg-white/[0.06] sm:grid-cols-2">
-              <div className="bg-[#09131e] p-6">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Departure
-                </p>
-
-                <p className="mt-3 text-sm font-medium text-slate-200">
-                  {formatLongDate(
-                    trip.startDate,
-                  )}
-                </p>
-              </div>
-
-              <div className="bg-[#09131e] p-6">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Return
-                </p>
-
-                <p className="mt-3 text-sm font-medium text-slate-200">
-                  {formatLongDate(
-                    trip.endDate,
-                  )}
-                </p>
-              </div>
-            </div>
-          </div>
+      {activeTab ===
+      'overview' ? (
+        <OverviewContent
+          trip={trip}
+        />
+      ) : (
+        <div className="py-9">
+          <ItineraryTimeline
+            tripId={trip.id}
+          />
         </div>
-
-        <aside>
-          <div className="sticky top-8 overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-white/[0.025]">
-            <div className="relative h-44 overflow-hidden bg-[linear-gradient(145deg,#0d2a39,#11384b_55%,#09141e)]">
-              <div className="absolute -right-12 -top-20 h-44 w-44 rounded-full border border-sky-200/10 bg-sky-300/[0.04]" />
-
-              <div className="absolute left-6 top-6 flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-black/10 text-sky-200">
-                <GlobeIcon />
-              </div>
-
-              <div className="absolute bottom-6 left-6">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-200/50">
-                  Destination
-                </p>
-
-                <p className="mt-1 max-w-[15rem] text-lg font-semibold tracking-[-0.025em] text-white">
-                  {
-                    trip.destination
-                  }
-                </p>
-              </div>
-            </div>
-
-            <div className="divide-y divide-white/[0.07]">
-              <div className="p-6">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Workspace
-                </p>
-
-                <p className="mt-3 text-sm leading-6 text-slate-400">
-                  This journey now has
-                  its own permanent
-                  workspace. Everything
-                  added in the next
-                  phases will belong to
-                  this trip.
-                </p>
-              </div>
-
-              <div className="p-6">
-                <div className="flex items-center gap-3">
-                  <span className="h-2 w-2 rounded-full bg-sky-300 shadow-[0_0_12px_rgba(125,211,252,0.6)]" />
-
-                  <p className="text-xs font-medium text-slate-300">
-                    Workspace ready
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </aside>
-      </section>
+      )}
     </div>
   );
 }
