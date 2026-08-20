@@ -25,6 +25,7 @@ import type {
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
@@ -541,12 +542,16 @@ function CategoryBadge({
 function PlaceCard({
   place,
   selected,
+  cardRef,
   onSelect,
   onEdit,
   onDelete,
 }: {
   place: Place;
   selected: boolean;
+  cardRef: (
+    element: HTMLElement | null,
+  ) => void;
   onSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -566,12 +571,39 @@ function PlaceCard({
 
   return (
     <article
+      ref={cardRef}
       onClick={onSelect}
+      onKeyDown={(
+        event,
+      ) => {
+        if (
+          event.target !==
+          event.currentTarget
+        ) {
+          return;
+        }
+
+        if (
+          event.key ===
+            'Enter' ||
+          event.key ===
+            ' '
+        ) {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-pressed={
+        selected
+      }
       className={[
-        'group relative cursor-pointer overflow-hidden rounded-[1.65rem] border transition duration-300 hover:-translate-y-0.5',
+        'group relative cursor-pointer overflow-hidden rounded-[1.65rem] border outline-none transition duration-300 hover:-translate-y-0.5',
         selected
           ? 'border-sky-300/30 bg-sky-300/[0.055] shadow-[0_0_0_1px_rgba(125,211,252,0.06)]'
           : 'border-white/[0.08] bg-white/[0.028] hover:border-white/[0.15] hover:bg-white/[0.045]',
+        'focus-visible:border-sky-300/40 focus-visible:ring-2 focus-visible:ring-sky-300/15',
       ].join(' ')}
     >
       <div className="pointer-events-none absolute -right-16 -top-20 h-40 w-40 rounded-full border border-white/[0.04] bg-white/[0.018]" />
@@ -867,6 +899,11 @@ function PlaceDialog({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
+      aria-label={
+        isEditing
+          ? 'Edit place'
+          : 'Add place'
+      }
     >
       <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[28px] border border-white/10 bg-[#0c1118] shadow-[0_30px_120px_rgba(0,0,0,0.65)]">
         <div className="flex items-start justify-between border-b border-white/[0.07] px-6 py-5">
@@ -894,6 +931,7 @@ function PlaceDialog({
             disabled={
               submitting
             }
+            aria-label="Close"
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03] text-white/45 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-40"
           >
             <X
@@ -1176,7 +1214,12 @@ function DeleteDialog({
   onConfirm: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+      role="alertdialog"
+      aria-modal="true"
+      aria-label="Delete place"
+    >
       <div className="w-full max-w-md rounded-[26px] border border-white/10 bg-[#0c1118] p-6">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-rose-300/10 bg-rose-300/[0.05] text-rose-200">
           <Trash2
@@ -1264,6 +1307,13 @@ export function PlacesPanel({
   ] =
     useState<string | null>(
       null,
+    );
+
+  const placeCardRefs =
+    useRef<
+      Map<string, HTMLElement>
+    >(
+      new Map(),
     );
 
   const [
@@ -1449,6 +1499,62 @@ export function PlacesPanel({
         ),
       ).size;
     }, [state]);
+
+  useEffect(() => {
+    if (
+      !selectedPlaceId
+    ) {
+      return;
+    }
+
+    const frame =
+      window.requestAnimationFrame(
+        () => {
+          const card =
+            placeCardRefs.current.get(
+              selectedPlaceId,
+            );
+
+          card?.scrollIntoView({
+            behavior:
+              'smooth',
+
+            block:
+              'nearest',
+
+            inline:
+              'nearest',
+          });
+        },
+      );
+
+    return () => {
+      window.cancelAnimationFrame(
+        frame,
+      );
+    };
+  }, [
+    selectedPlaceId,
+    visiblePlaces,
+  ]);
+
+  function registerPlaceCard(
+    placeId: string,
+    element: HTMLElement | null,
+  ): void {
+    if (element) {
+      placeCardRefs.current.set(
+        placeId,
+        element,
+      );
+
+      return;
+    }
+
+    placeCardRefs.current.delete(
+      placeId,
+    );
+  }
 
   function openCreate() {
     setForm({
@@ -2001,6 +2107,14 @@ export function PlacesPanel({
                             selectedPlaceId ===
                             place.id
                           }
+                          cardRef={(
+                            element,
+                          ) => {
+                            registerPlaceCard(
+                              place.id,
+                              element,
+                            );
+                          }}
                           onSelect={() => {
                             setSelectedPlaceId(
                               place.id,
