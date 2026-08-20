@@ -25,7 +25,7 @@ export default async function TripPage({
 
       <div className="pointer-events-none absolute right-[-20rem] top-[32rem] h-[38rem] w-[38rem] rounded-full bg-cyan-300/[0.02] blur-[120px]" />
 
-      <div className="relative mx-auto max-w-7xl px-6 pb-20 pt-7 lg:px-8">
+      <div className="relative mx-auto w-full max-w-[1500px] px-5 pb-20 pt-7 sm:px-6 lg:px-8 xl:px-10">
         <header className="flex items-center justify-between border-b border-white/[0.07] pb-6">
           <Link
             href="/dashboard"
