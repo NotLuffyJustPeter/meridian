@@ -6,6 +6,8 @@ import {
   useState,
 } from 'react';
 
+import { useModalBehavior } from '../../../hooks/use-modal-behavior';
+
 import type {
   Activity,
   ActivityCategory,
@@ -743,6 +745,12 @@ function ActivityDialog({
   const isEditing =
     dialog.mode === 'edit';
 
+  useModalBehavior({
+    open: true,
+    disabled: submitting,
+    onClose,
+  });
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
@@ -795,6 +803,7 @@ function ActivityDialog({
             </span>
 
             <input
+              autoFocus
               value={form.title}
               onChange={(
                 event,
@@ -1037,6 +1046,12 @@ function DeleteDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  useModalBehavior({
+    open: true,
+    disabled: deleting,
+    onClose: onCancel,
+  });
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
@@ -1895,7 +1910,10 @@ export function ItineraryTimeline({
           </div>
         </div>
 
-        <div className="-mx-1 overflow-x-auto px-1 pb-2">
+        <div
+          className="scrollbar-meridian-x -mx-1 px-1 pb-2"
+          aria-label="Select itinerary day"
+        >
           <div className="flex min-w-max gap-2.5">
             {itinerary.days.map(
               (day) => (

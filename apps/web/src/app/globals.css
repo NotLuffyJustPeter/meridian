@@ -58,3 +58,43 @@ body {
   background: rgba(255, 255, 255, 0.07);
   color: white;
 }
+
+/* Meridian horizontal scrollbar
+   Desktop: visible and subtle
+   Mobile/tablet: hidden, swipe remains available
+*/
+.scrollbar-meridian-x {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.28) rgba(255, 255, 255, 0.03);
+}
+
+.scrollbar-meridian-x::-webkit-scrollbar {
+  height: 7px;
+}
+
+.scrollbar-meridian-x::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.025);
+  border-radius: 999px;
+}
+
+.scrollbar-meridian-x::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.26);
+  border-radius: 999px;
+}
+
+.scrollbar-meridian-x::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.42);
+}
+
+@media (max-width: 1023px) {
+  .scrollbar-meridian-x {
+    scrollbar-width: none;
+  }
+
+  .scrollbar-meridian-x::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}

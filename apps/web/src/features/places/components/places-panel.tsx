@@ -23,7 +23,10 @@ import {
   Utensils,
   X,
 } from 'lucide-react';
-import type { ReactNode } from 'react';
+import type {
+  CSSProperties,
+  ReactNode,
+} from 'react';
 import {
   useEffect,
   useMemo,
@@ -31,6 +34,7 @@ import {
   useState,
 } from 'react';
 
+import { useModalBehavior } from '../../../hooks/use-modal-behavior';
 import { GeocodingPreviewMap } from '../../geocoding/components/geocoding-preview-map';
 import type {
   GeocodingResult,
@@ -187,6 +191,12 @@ const PLACE_CATEGORIES =
   Object.keys(
     CATEGORY_META,
   ) as PlaceCategory[];
+
+const SOFT_SCROLLBAR_STYLE: CSSProperties = {
+  scrollbarWidth: 'thin',
+  scrollbarColor:
+    'rgba(148, 163, 184, 0.18) transparent',
+};
 
 function isRecord(
   value: unknown,
@@ -852,7 +862,7 @@ function PlaceCard({
               }}
               aria-label={`Edit ${place.name}`}
               title="Edit place"
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.025] text-white/45 transition hover:border-white/[0.14] hover:bg-white/[0.08] hover:text-white"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.025] text-white/45 transition hover:border-white/[0.14] hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/20"
             >
               <Pencil
                 className="h-3.5 w-3.5"
@@ -870,7 +880,7 @@ function PlaceCard({
               }}
               aria-label={`Delete ${place.name}`}
               title="Delete place"
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-rose-300/10 bg-rose-300/[0.025] text-rose-200/45 transition hover:border-rose-300/20 hover:bg-rose-300/[0.08] hover:text-rose-100"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-rose-300/10 bg-rose-300/[0.025] text-rose-200/45 transition hover:border-rose-300/20 hover:bg-rose-300/[0.08] hover:text-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/20"
             >
               <Trash2
                 className="h-3.5 w-3.5"
@@ -908,7 +918,7 @@ function PlaceCard({
                 ) => {
                   event.stopPropagation();
                 }}
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.07] bg-black/10 px-3 py-1.5 text-[11px] text-sky-200/65 transition hover:border-sky-300/20 hover:bg-sky-300/[0.05] hover:text-sky-100"
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.07] bg-black/10 px-3 py-1.5 text-[11px] text-sky-200/65 transition hover:border-sky-300/20 hover:bg-sky-300/[0.05] hover:text-sky-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/20"
               >
                 Website
 
@@ -1020,7 +1030,7 @@ function EmptyPlaces({
       <button
         type="button"
         onClick={onAdd}
-        className="relative mt-7 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+        className="relative mt-7 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/30"
       >
         <Plus
           className="h-4 w-4"
@@ -1107,7 +1117,7 @@ function EmptyMapState({
           onClick={
             onShowPlaces
           }
-          className="mt-6 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-2.5 text-sm font-medium text-white/70 transition hover:bg-white/[0.08] hover:text-white lg:hidden"
+          className="mt-6 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-2.5 text-sm font-medium text-white/70 transition hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/20 lg:hidden"
         >
           <List
             className="h-4 w-4"
@@ -1218,6 +1228,12 @@ function PlaceDialog({
     getPreviewCoordinates(
       form,
     );
+
+  useModalBehavior({
+    open: true,
+    disabled: submitting,
+    onClose,
+  });
 
   async function searchLocation():
     Promise<void> {
@@ -1417,7 +1433,7 @@ function PlaceDialog({
               submitting
             }
             aria-label="Close"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03] text-white/45 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-40"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03] text-white/45 transition hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/20 disabled:opacity-40"
           >
             <X
               className="h-4 w-4"
@@ -1426,7 +1442,12 @@ function PlaceDialog({
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6 sm:py-6">
+        <div
+          className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6 sm:py-6"
+          style={
+            SOFT_SCROLLBAR_STYLE
+          }
+        >
           <section className="rounded-2xl border border-sky-300/10 bg-sky-300/[0.025] p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -1456,6 +1477,7 @@ function PlaceDialog({
                 />
 
                 <input
+                  autoFocus
                   value={
                     locationQuery
                   }
@@ -1490,7 +1512,7 @@ function PlaceDialog({
                     }
                   }}
                   placeholder="Duomo di Milano"
-                  className="w-full rounded-xl border border-white/[0.08] bg-black/10 py-3 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-sky-300/30"
+                  className="w-full rounded-xl border border-white/[0.08] bg-black/10 py-3 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-sky-300/30 focus:ring-2 focus:ring-sky-300/[0.06]"
                 />
               </div>
 
@@ -1505,7 +1527,7 @@ function PlaceDialog({
                 onClick={() => {
                   void searchLocation();
                 }}
-                className="inline-flex min-w-[112px] items-center justify-center gap-2 rounded-xl border border-sky-300/15 bg-sky-300/[0.08] px-4 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-300/[0.12] disabled:cursor-not-allowed disabled:opacity-35"
+                className="inline-flex min-w-[112px] items-center justify-center gap-2 rounded-xl border border-sky-300/15 bg-sky-300/[0.08] px-4 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-300/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/20 disabled:cursor-not-allowed disabled:opacity-35"
               >
                 {searching ? (
                   <>
@@ -1558,7 +1580,12 @@ function PlaceDialog({
             {searchResults.length >
               0 && (
               <div className="mt-4 overflow-hidden rounded-xl border border-white/[0.07] bg-black/10">
-                <div className="max-h-[265px] overflow-y-auto overscroll-contain">
+                <div
+                  className="max-h-[265px] overflow-y-auto overscroll-contain"
+                  style={
+                    SOFT_SCROLLBAR_STYLE
+                  }
+                >
                   {searchResults.map(
                     (
                       result,
@@ -1578,13 +1605,14 @@ function PlaceDialog({
                             );
                           }}
                           className={[
-                            'flex w-full items-start gap-3 px-4 py-4 text-left transition',
+                            'flex w-full items-start gap-3 px-4 py-4 text-left outline-none transition',
                             index > 0
                               ? 'border-t border-white/[0.06]'
                               : '',
                             selected
                               ? 'bg-sky-300/[0.07]'
                               : 'hover:bg-white/[0.035]',
+                            'focus-visible:bg-sky-300/[0.06]',
                           ].join(' ')}
                         >
                           <div
@@ -1745,7 +1773,7 @@ function PlaceDialog({
                   }
                   maxLength={160}
                   placeholder="Duomo di Milano"
-                  className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-sky-300/30"
+                  className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-sky-300/30 focus:ring-2 focus:ring-sky-300/[0.06]"
                 />
               </label>
 
@@ -1770,7 +1798,7 @@ function PlaceDialog({
                             .value as PlaceCategory,
                       })
                     }
-                    className="mt-2 w-full rounded-xl border border-white/[0.08] bg-[#111720] px-4 py-3 text-sm text-white outline-none focus:border-sky-300/30"
+                    className="mt-2 w-full rounded-xl border border-white/[0.08] bg-[#111720] px-4 py-3 text-sm text-white outline-none transition focus:border-sky-300/30 focus:ring-2 focus:ring-sky-300/[0.06]"
                   >
                     {PLACE_CATEGORIES.map(
                       (
@@ -1818,7 +1846,7 @@ function PlaceDialog({
                     }
                     maxLength={500}
                     placeholder="https://..."
-                    className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none placeholder:text-white/20 focus:border-sky-300/30"
+                    className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-sky-300/30 focus:ring-2 focus:ring-sky-300/[0.06]"
                   />
                 </label>
               </div>
@@ -1845,7 +1873,7 @@ function PlaceDialog({
                   }
                   maxLength={300}
                   placeholder="Piazza del Duomo, Milano"
-                  className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none placeholder:text-white/20 focus:border-sky-300/30"
+                  className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-sky-300/30 focus:ring-2 focus:ring-sky-300/[0.06]"
                 />
               </label>
 
@@ -1872,7 +1900,7 @@ function PlaceDialog({
                   maxLength={2000}
                   rows={3}
                   placeholder="Reservations, best time to visit, reminders..."
-                  className="mt-2 w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-white/20 focus:border-sky-300/30"
+                  className="mt-2 w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-white/20 focus:border-sky-300/30 focus:ring-2 focus:ring-sky-300/[0.06]"
                 />
               </label>
             </div>
@@ -1891,7 +1919,7 @@ function PlaceDialog({
                 showAdvanced
               }
               aria-controls="advanced-location-details"
-              className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition hover:bg-white/[0.025]"
+              className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left outline-none transition hover:bg-white/[0.025] focus-visible:bg-white/[0.04]"
             >
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.025]">
@@ -1960,7 +1988,7 @@ function PlaceDialog({
                         })
                       }
                       placeholder="Latitude"
-                      className="w-full rounded-xl border border-white/[0.08] bg-black/10 px-4 py-3 font-mono text-sm text-white outline-none placeholder:font-sans placeholder:text-white/20 focus:border-sky-300/30"
+                      className="w-full rounded-xl border border-white/[0.08] bg-black/10 px-4 py-3 font-mono text-sm text-white outline-none transition placeholder:font-sans placeholder:text-white/20 focus:border-sky-300/30 focus:ring-2 focus:ring-sky-300/[0.06]"
                     />
 
                     <input
@@ -1981,7 +2009,7 @@ function PlaceDialog({
                         })
                       }
                       placeholder="Longitude"
-                      className="w-full rounded-xl border border-white/[0.08] bg-black/10 px-4 py-3 font-mono text-sm text-white outline-none placeholder:font-sans placeholder:text-white/20 focus:border-sky-300/30"
+                      className="w-full rounded-xl border border-white/[0.08] bg-black/10 px-4 py-3 font-mono text-sm text-white outline-none transition placeholder:font-sans placeholder:text-white/20 focus:border-sky-300/30 focus:ring-2 focus:ring-sky-300/[0.06]"
                     />
                   </div>
 
@@ -2034,7 +2062,7 @@ function PlaceDialog({
             disabled={
               submitting
             }
-            className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-white/60 transition hover:bg-white/[0.05] hover:text-white disabled:opacity-40"
+            className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-white/60 transition hover:bg-white/[0.05] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/20 disabled:opacity-40"
           >
             Cancel
           </button>
@@ -2048,7 +2076,7 @@ function PlaceDialog({
                 .trim()
                 .length === 0
             }
-            className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/30 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {submitting
               ? 'Saving...'
@@ -2075,6 +2103,12 @@ function DeleteDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  useModalBehavior({
+    open: true,
+    disabled: deleting,
+    onClose: onCancel,
+  });
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
@@ -2113,7 +2147,7 @@ function DeleteDialog({
             disabled={
               deleting
             }
-            className="rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/60"
+            className="rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/60 transition hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/20"
           >
             Cancel
           </button>
@@ -2124,7 +2158,7 @@ function DeleteDialog({
             disabled={
               deleting
             }
-            className="rounded-xl border border-rose-300/15 bg-rose-300/[0.08] px-4 py-2.5 text-sm font-semibold text-rose-100"
+            className="rounded-xl border border-rose-300/15 bg-rose-300/[0.08] px-4 py-2.5 text-sm font-semibold text-rose-100 transition hover:bg-rose-300/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/20"
           >
             {deleting
               ? 'Deleting...'
@@ -2392,10 +2426,8 @@ export function PlacesPanel({
 
   const selectedPlaceIsMapped =
     selectedPlace !== null &&
-    selectedPlace.latitude !==
-      null &&
-    selectedPlace.longitude !==
-      null;
+    selectedPlace.latitude !== null &&
+    selectedPlace.longitude !== null;
 
   const unmappedCount =
     state.places.length -
@@ -2541,7 +2573,7 @@ export function PlacesPanel({
       );
 
     if (
-      !coordinates.ok
+      coordinates.ok === false
     ) {
       setFormError(
         coordinates.message,
@@ -2788,7 +2820,7 @@ export function PlacesPanel({
 
             void reloadPlaces();
           }}
-          className="mt-6 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-2.5 text-sm text-white"
+          className="mt-6 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-2.5 text-sm text-white transition hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/20"
         >
           Try again
         </button>
@@ -2834,7 +2866,7 @@ export function PlacesPanel({
           <button
             type="button"
             onClick={openCreate}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/30"
           >
             <Plus
               className="h-4 w-4"
@@ -2846,7 +2878,7 @@ export function PlacesPanel({
 
         {totalPlaces > 0 && (
           <div className="mt-7 grid grid-cols-3 gap-2 sm:gap-3">
-            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4 sm:p-5">
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4 transition hover:border-white/[0.1] hover:bg-white/[0.03] sm:p-5">
               <p className="truncate text-[9px] uppercase tracking-[0.14em] text-white/30 sm:text-[10px] sm:tracking-[0.18em]">
                 Saved
               </p>
@@ -2856,7 +2888,7 @@ export function PlacesPanel({
               </p>
             </div>
 
-            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4 sm:p-5">
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4 transition hover:border-white/[0.1] hover:bg-white/[0.03] sm:p-5">
               <p className="truncate text-[9px] uppercase tracking-[0.14em] text-white/30 sm:text-[10px] sm:tracking-[0.18em]">
                 Ready for map
               </p>
@@ -2866,7 +2898,7 @@ export function PlacesPanel({
               </p>
             </div>
 
-            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4 sm:p-5">
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4 transition hover:border-white/[0.1] hover:bg-white/[0.03] sm:p-5">
               <p className="truncate text-[9px] uppercase tracking-[0.14em] text-white/30 sm:text-[10px] sm:tracking-[0.18em]">
                 Categories
               </p>
@@ -2891,22 +2923,25 @@ export function PlacesPanel({
             >
               <button
                 type="button"
+                id="places-mobile-tab"
                 role="tab"
                 aria-selected={
                   mobileView ===
                   'places'
                 }
+                aria-controls="places-mobile-panel"
                 onClick={() => {
                   setMobileView(
                     'places',
                   );
                 }}
                 className={[
-                  'flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-medium transition',
+                  'flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-medium outline-none transition',
                   mobileView ===
                   'places'
                     ? 'bg-white/[0.09] text-white shadow-sm'
                     : 'text-white/35 hover:text-white/60',
+                  'focus-visible:ring-2 focus-visible:ring-sky-300/20',
                 ].join(' ')}
               >
                 <List
@@ -2925,22 +2960,25 @@ export function PlacesPanel({
 
               <button
                 type="button"
+                id="map-mobile-tab"
                 role="tab"
                 aria-selected={
                   mobileView ===
                   'map'
                 }
+                aria-controls="map-mobile-panel"
                 onClick={() => {
                   setMobileView(
                     'map',
                   );
                 }}
                 className={[
-                  'flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-medium transition',
+                  'flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-medium outline-none transition',
                   mobileView ===
                   'map'
                     ? 'bg-sky-300/[0.09] text-sky-100 shadow-sm'
                     : 'text-white/35 hover:text-white/60',
+                  'focus-visible:ring-2 focus-visible:ring-sky-300/20',
                 ].join(' ')}
               >
                 <MapIcon
@@ -2960,6 +2998,9 @@ export function PlacesPanel({
 
             <div className="mt-4 grid items-start gap-6 lg:mt-7 lg:grid-cols-[minmax(320px,0.72fr)_minmax(0,1.28fr)]">
               <aside
+                id="places-mobile-panel"
+                role="tabpanel"
+                aria-labelledby="places-mobile-tab"
                 className={[
                   'min-w-0 overflow-hidden rounded-[1.65rem] border border-white/[0.07] bg-white/[0.018]',
                   mobileView ===
@@ -3005,74 +3046,83 @@ export function PlacesPanel({
                         )
                       }
                       placeholder="Search places..."
-                      className="w-full rounded-xl border border-white/[0.08] bg-black/10 py-3 pl-10 pr-4 text-sm text-white outline-none placeholder:text-white/20"
+                      className="w-full rounded-xl border border-white/[0.08] bg-black/10 py-3 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-sky-300/25 focus:ring-2 focus:ring-sky-300/[0.05]"
                     />
                   </div>
 
-                  <div className="flex gap-2 overflow-x-auto pb-1">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setCategoryFilter(
-                          'ALL',
-                        )
-                      }
-                      className={[
-                        'shrink-0 rounded-full border px-3 py-1.5 text-xs transition',
-                        categoryFilter ===
-                        'ALL'
-                          ? 'border-white/20 bg-white/[0.1] text-white'
-                          : 'border-white/[0.07] text-white/40',
-                      ].join(' ')}
+                  <div className="relative">
+                    <div
+                      className="scrollbar-meridian-x flex gap-2 pb-2"
+                      aria-label="Filter places by category"
                     >
-                      All
-                    </button>
-
-                    {PLACE_CATEGORIES.map(
-                      (
-                        category,
-                      ) => {
-                        const meta =
-                          CATEGORY_META[
-                            category
-                          ];
-
-                        const Icon =
-                          meta.icon;
-
-                        const active =
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCategoryFilter(
+                            'ALL',
+                          )
+                        }
+                        className={[
+                          'shrink-0 rounded-full border px-3 py-1.5 text-xs outline-none transition',
                           categoryFilter ===
-                          category;
+                          'ALL'
+                            ? 'border-white/20 bg-white/[0.1] text-white'
+                            : 'border-white/[0.07] text-white/40 hover:border-white/[0.12] hover:text-white/60',
+                          'focus-visible:ring-2 focus-visible:ring-sky-300/20',
+                        ].join(' ')}
+                      >
+                        All
+                      </button>
 
-                        return (
-                          <button
-                            key={
+                      {PLACE_CATEGORIES.map(
+                        (
+                          category,
+                        ) => {
+                          const meta =
+                            CATEGORY_META[
                               category
-                            }
-                            type="button"
-                            onClick={() =>
-                              setCategoryFilter(
-                                category,
-                              )
-                            }
-                            className={[
-                              'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition',
-                              active
-                                ? meta.badgeClassName
-                                : 'border-white/[0.07] text-white/40',
-                            ].join(' ')}
-                          >
-                            <Icon
-                              className="h-3.5 w-3.5"
-                            />
+                            ];
 
-                            {
-                              meta.filterLabel
-                            }
-                          </button>
-                        );
-                      },
-                    )}
+                          const Icon =
+                            meta.icon;
+
+                          const active =
+                            categoryFilter ===
+                            category;
+
+                          return (
+                            <button
+                              key={
+                                category
+                              }
+                              type="button"
+                              onClick={() =>
+                                setCategoryFilter(
+                                  category,
+                                )
+                              }
+                              className={[
+                                'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs outline-none transition',
+                                active
+                                  ? meta.badgeClassName
+                                  : 'border-white/[0.07] text-white/40 hover:border-white/[0.12] hover:bg-white/[0.025] hover:text-white/60',
+                                'focus-visible:ring-2 focus-visible:ring-sky-300/20',
+                              ].join(' ')}
+                            >
+                              <Icon
+                                className="h-3.5 w-3.5"
+                              />
+
+                              {
+                                meta.filterLabel
+                              }
+                            </button>
+                          );
+                        },
+                      )}
+                    </div>
+
+                    <div className="pointer-events-none absolute bottom-0 right-0 top-0 w-8 bg-gradient-to-l from-[#0b121a] to-transparent opacity-70" />
                   </div>
                 </div>
 
@@ -3083,7 +3133,12 @@ export function PlacesPanel({
                       <NoResults />
                     </div>
                   ) : (
-                    <div className="space-y-3 p-4 lg:max-h-[620px] lg:overflow-y-auto">
+                    <div
+                      className="space-y-3 p-4 lg:max-h-[620px] lg:overflow-y-auto"
+                      style={
+                        SOFT_SCROLLBAR_STYLE
+                      }
+                    >
                       {visiblePlaces.map(
                         (place) => (
                           <PlaceCard
@@ -3133,6 +3188,9 @@ export function PlacesPanel({
               </aside>
 
               <div
+                id="map-mobile-panel"
+                role="tabpanel"
+                aria-labelledby="map-mobile-tab"
                 className={[
                   'min-w-0 lg:sticky lg:top-6 lg:block',
                   mobileView ===
