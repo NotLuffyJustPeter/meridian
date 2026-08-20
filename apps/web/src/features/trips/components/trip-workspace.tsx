@@ -10,6 +10,7 @@ import {
 } from 'react';
 
 import { ItineraryTimeline } from '../../itinerary/components/itinerary-timeline';
+import { PlacesPanel } from '../../places/components/places-panel';
 import type {
   Trip,
   TripStatus,
@@ -39,7 +40,8 @@ type TripWorkspaceState =
 
 type WorkspaceTab =
   | 'overview'
-  | 'itinerary';
+  | 'itinerary'
+  | 'places';
 
 function isRecord(
   value: unknown,
@@ -961,9 +963,19 @@ export function TripWorkspace({
           Itinerary
         </WorkspaceTabButton>
 
-        <SoonTab>
+        <WorkspaceTabButton
+          active={
+            activeTab ===
+            'places'
+          }
+          onClick={() =>
+            setActiveTab(
+              'places',
+            )
+          }
+        >
           Places
-        </SoonTab>
+        </WorkspaceTabButton>
 
         <SoonTab>
           Budget
@@ -971,17 +983,29 @@ export function TripWorkspace({
       </nav>
 
       {activeTab ===
-      'overview' ? (
-        <OverviewContent
-          trip={trip}
+  'overview' && (
+  <OverviewContent
+    trip={trip}
+  />
+)}
+
+    {activeTab ===
+      'itinerary' && (
+      <div className="py-9">
+        <ItineraryTimeline
+          tripId={trip.id}
         />
-      ) : (
-        <div className="py-9">
-          <ItineraryTimeline
-            tripId={trip.id}
-          />
-        </div>
-      )}
+      </div>
+    )}
+
+    {activeTab ===
+      'places' && (
+      <div className="py-9">
+        <PlacesPanel
+          tripId={trip.id}
+        />
+      </div>
+    )}
     </div>
   );
 }
