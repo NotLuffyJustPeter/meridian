@@ -34,6 +34,17 @@ enum ActivityCategory {
   OTHER
 }
 
+enum PlaceCategory {
+  LANDMARK
+  FOOD
+  LODGING
+  SHOPPING
+  TRANSPORT
+  ENTERTAINMENT
+  NATURE
+  OTHER
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -78,8 +89,9 @@ model Trip {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  owner User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  days  TripDay[]
+  owner  User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  days   TripDay[]
+  places Place[]
 
   @@index([ownerId])
   @@index([ownerId, status])
@@ -125,4 +137,28 @@ model Activity {
   @@index([tripDayId])
   @@index([tripDayId, position])
   @@map("activities")
+}
+
+model Place {
+  id             String        @id @default(uuid())
+  tripId         String
+  name           String
+  category       PlaceCategory @default(OTHER)
+  address        String?
+  latitude       Float?
+  longitude      Float?
+  notes          String?
+  website        String?
+  sourceProvider String?
+  sourcePlaceId  String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@index([tripId, category])
+  @@index([tripId, name])
+  @@index([tripId, sourceProvider, sourcePlaceId])
+  @@map("places")
 }
