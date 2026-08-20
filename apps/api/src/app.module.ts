@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
+import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
-import { UsersModule } from './users/users.module';
-import { AuthModule } from './auth/auth.module';
+import { ItineraryModule } from './itinerary/itinerary.module';
 import { TripsModule } from './trips/trips.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { TripsModule } from './trips/trips.module';
     UsersModule,
     AuthModule,
     TripsModule,
+    ItineraryModule,
   ],
 })
 export class AppModule {}
