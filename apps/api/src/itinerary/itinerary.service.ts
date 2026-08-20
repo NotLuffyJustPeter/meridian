@@ -1,7 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../database/prisma.service';
 import { TripsService } from '../trips/trips.service';
+import { type CreateActivityDto } from './dto/create-activity.dto';
+import { type UpdateActivityDto } from './dto/update-activity.dto';
 
 @Injectable()
 export class ItineraryService {
@@ -57,6 +59,211 @@ export class ItineraryService {
       timezone: trip.timezone,
       days,
     };
+  }
+
+  async createActivity(ownerId: string, tripId: string, dayId: string, dto: CreateActivityDto) {
+    const day = await this.findOwnedDayOrThrow(ownerId, tripId, dayId);
+
+    const title = dto.title.trim();
+
+    if (!title) {
+      throw new BadRequestException('Activity title is required');
+    }
+
+    const description = dto.description !== undefined ? dto.description.trim() : undefined;
+
+    const location = dto.location !== undefined ? dto.location.trim() : undefined;
+
+    const notes = dto.notes !== undefined ? dto.notes.trim() : undefined;
+
+    this.validateTimeRange(dto.startTime, dto.endTime);
+
+    let position = dto.position;
+
+    if (position === undefined) {
+      const lastActivity = await this.prisma.activity.findFirst({
+        where: {
+          tripDayId: day.id,
+        },
+        orderBy: {
+          position: 'desc',
+        },
+        select: {
+          position: true,
+        },
+      });
+
+      position = (lastActivity?.position ?? -1) + 1;
+    }
+
+    return this.prisma.activity.create({
+      data: {
+        tripDayId: day.id,
+        title,
+        ...(description !== undefined && {
+          description,
+        }),
+        ...(dto.category !== undefined && {
+          category: dto.category,
+        }),
+        ...(dto.startTime !== undefined && {
+          startTime: dto.startTime,
+        }),
+        ...(dto.endTime !== undefined && {
+          endTime: dto.endTime,
+        }),
+        ...(location !== undefined && {
+          location,
+        }),
+        ...(notes !== undefined && {
+          notes,
+        }),
+        position,
+      },
+    });
+  }
+
+  async updateActivity(
+    ownerId: string,
+    tripId: string,
+    dayId: string,
+    activityId: string,
+    dto: UpdateActivityDto,
+  ) {
+    const hasUpdates =
+      dto.title !== undefined ||
+      dto.description !== undefined ||
+      dto.category !== undefined ||
+      dto.startTime !== undefined ||
+      dto.endTime !== undefined ||
+      dto.location !== undefined ||
+      dto.notes !== undefined ||
+      dto.position !== undefined;
+
+    if (!hasUpdates) {
+      throw new BadRequestException('At least one field must be provided');
+    }
+
+    const day = await this.findOwnedDayOrThrow(ownerId, tripId, dayId);
+
+    const activity = await this.findOwnedActivityOrThrow(day.id, activityId);
+
+    const title = dto.title !== undefined ? dto.title.trim() : undefined;
+
+    if (title !== undefined && !title) {
+      throw new BadRequestException('Activity title is required');
+    }
+
+    const description = dto.description !== undefined ? dto.description.trim() : undefined;
+
+    const location = dto.location !== undefined ? dto.location.trim() : undefined;
+
+    const notes = dto.notes !== undefined ? dto.notes.trim() : undefined;
+
+    const startTime =
+      dto.startTime !== undefined ? dto.startTime : (activity.startTime ?? undefined);
+
+    const endTime = dto.endTime !== undefined ? dto.endTime : (activity.endTime ?? undefined);
+
+    this.validateTimeRange(startTime, endTime);
+
+    const result = await this.prisma.activity.updateMany({
+      where: {
+        id: activity.id,
+        tripDayId: day.id,
+      },
+      data: {
+        ...(title !== undefined && {
+          title,
+        }),
+        ...(description !== undefined && {
+          description,
+        }),
+        ...(dto.category !== undefined && {
+          category: dto.category,
+        }),
+        ...(dto.startTime !== undefined && {
+          startTime: dto.startTime,
+        }),
+        ...(dto.endTime !== undefined && {
+          endTime: dto.endTime,
+        }),
+        ...(location !== undefined && {
+          location,
+        }),
+        ...(notes !== undefined && {
+          notes,
+        }),
+        ...(dto.position !== undefined && {
+          position: dto.position,
+        }),
+      },
+    });
+
+    if (result.count === 0) {
+      throw new NotFoundException('Activity not found');
+    }
+
+    return this.findOwnedActivityOrThrow(day.id, activity.id);
+  }
+
+  async removeActivity(
+    ownerId: string,
+    tripId: string,
+    dayId: string,
+    activityId: string,
+  ): Promise<void> {
+    const day = await this.findOwnedDayOrThrow(ownerId, tripId, dayId);
+
+    const result = await this.prisma.activity.deleteMany({
+      where: {
+        id: activityId,
+        tripDayId: day.id,
+      },
+    });
+
+    if (result.count === 0) {
+      throw new NotFoundException('Activity not found');
+    }
+  }
+
+  private async findOwnedDayOrThrow(ownerId: string, tripId: string, dayId: string) {
+    const day = await this.prisma.tripDay.findFirst({
+      where: {
+        id: dayId,
+        tripId,
+        trip: {
+          ownerId,
+        },
+      },
+    });
+
+    if (!day) {
+      throw new NotFoundException('Trip day not found');
+    }
+
+    return day;
+  }
+
+  private async findOwnedActivityOrThrow(tripDayId: string, activityId: string) {
+    const activity = await this.prisma.activity.findFirst({
+      where: {
+        id: activityId,
+        tripDayId,
+      },
+    });
+
+    if (!activity) {
+      throw new NotFoundException('Activity not found');
+    }
+
+    return activity;
+  }
+
+  private validateTimeRange(startTime?: string, endTime?: string): void {
+    if (startTime && endTime && endTime < startTime) {
+      throw new BadRequestException('endTime must be on or after startTime');
+    }
   }
 
   private buildTripDates(startDate: Date, endDate: Date): Date[] {
