@@ -20,6 +20,8 @@ import {
   X,
 } from 'lucide-react';
 
+import { MeridianMap } from '../../map/components/meridian-map';
+
 import type {
   ReactNode,
 } from 'react';
@@ -1844,67 +1846,80 @@ export function PlacesPanel({
           </button>
         </div>
 
-        {totalPlaces >
-          0 && (
-          <>
-            <div className="mt-7 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/30">
-                    Saved
-                  </p>
-
-                  <MapPin
-                    className="h-4 w-4 text-white/20"
-                    strokeWidth={1.6}
-                  />
-                </div>
-
-                <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">
-                  {
-                    totalPlaces
-                  }
+      {totalPlaces > 0 && (
+        <>
+          <div className="mt-7 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/30">
+                  Saved
                 </p>
+
+                <MapPin
+                  className="h-4 w-4 text-white/20"
+                  strokeWidth={1.6}
+                />
               </div>
 
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/30">
-                    Ready for map
-                  </p>
-
-                  <MapPin
-                    className="h-4 w-4 text-emerald-300/50"
-                    strokeWidth={1.6}
-                  />
-                </div>
-
-                <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">
-                  {
-                    mappedCount
-                  }
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/30">
-                    Categories
-                  </p>
-
-                  <Sparkles
-                    className="h-4 w-4 text-sky-300/40"
-                    strokeWidth={1.6}
-                  />
-                </div>
-
-                <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">
-                  {
-                    categoryCount
-                  }
-                </p>
-              </div>
+              <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">
+                {totalPlaces}
+              </p>
             </div>
+
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/30">
+                  Ready for map
+                </p>
+
+                <MapPin
+                  className="h-4 w-4 text-emerald-300/50"
+                  strokeWidth={1.6}
+                />
+              </div>
+
+              <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">
+                {mappedCount}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/30">
+                  Categories
+                </p>
+
+                <Sparkles
+                  className="h-4 w-4 text-sky-300/40"
+                  strokeWidth={1.6}
+                />
+              </div>
+
+              <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">
+                {categoryCount}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-7">
+            <div className="mb-4 flex items-end justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300/60">
+                  Explore
+                </p>
+
+                <h3 className="mt-1 text-lg font-semibold tracking-[-0.025em] text-white">
+                  Journey map
+                </h3>
+              </div>
+
+              <span className="text-[10px] uppercase tracking-[0.16em] text-white/25">
+                Interactive
+              </span>
+            </div>
+
+            <MeridianMap />
+          </div>
 
             <div className="mt-6 overflow-hidden rounded-[1.5rem] border border-white/[0.07] bg-white/[0.02]">
               <div className="space-y-4 p-4 sm:p-5">
