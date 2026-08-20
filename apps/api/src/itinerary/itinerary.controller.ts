@@ -18,6 +18,7 @@ import { AccessTokenGuard } from '../auth/guards/access-token.guard';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { ItineraryService } from './itinerary.service';
+import { ReorderActivitiesDto } from './dto/reorder-activities.dto';
 
 @Controller('trips/:tripId/itinerary')
 @UseGuards(AccessTokenGuard)
@@ -65,6 +66,33 @@ export class ItineraryController {
     dto: CreateActivityDto,
   ) {
     return this.itineraryService.createActivity(user.sub, tripId, dayId, dto);
+  }
+
+  @Patch('days/:dayId/activities/reorder')
+  reorderActivities(
+    @CurrentUser()
+    user: AccessTokenPayload,
+
+    @Param(
+      'tripId',
+      new ParseUUIDPipe({
+        version: '4',
+      }),
+    )
+    tripId: string,
+
+    @Param(
+      'dayId',
+      new ParseUUIDPipe({
+        version: '4',
+      }),
+    )
+    dayId: string,
+
+    @Body()
+    dto: ReorderActivitiesDto,
+  ) {
+    return this.itineraryService.reorderActivities(user.sub, tripId, dayId, dto.activityIds);
   }
 
   @Patch('days/:dayId/activities/:activityId')

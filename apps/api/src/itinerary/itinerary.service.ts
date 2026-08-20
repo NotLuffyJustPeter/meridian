@@ -227,6 +227,66 @@ export class ItineraryService {
     }
   }
 
+  async reorderActivities(ownerId: string, tripId: string, dayId: string, activityIds: string[]) {
+    const day = await this.findOwnedDayOrThrow(ownerId, tripId, dayId);
+
+    const existingActivities = await this.prisma.activity.findMany({
+      where: {
+        tripDayId: day.id,
+      },
+      orderBy: {
+        position: 'asc',
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (existingActivities.length !== activityIds.length) {
+      throw new BadRequestException('activityIds must contain every activity in the trip day');
+    }
+
+    const existingIds = new Set(existingActivities.map((activity) => activity.id));
+
+    const containsOnlyOwnedActivities = activityIds.every((activityId) =>
+      existingIds.has(activityId),
+    );
+
+    if (!containsOnlyOwnedActivities) {
+      throw new BadRequestException('activityIds contains an invalid activity');
+    }
+
+    await this.prisma.$transaction(
+      activityIds.map((activityId, position) =>
+        this.prisma.activity.update({
+          where: {
+            id: activityId,
+          },
+          data: {
+            position,
+          },
+        }),
+      ),
+    );
+
+    return this.prisma.activity.findMany({
+      where: {
+        tripDayId: day.id,
+      },
+      orderBy: [
+        {
+          position: 'asc',
+        },
+        {
+          startTime: 'asc',
+        },
+        {
+          createdAt: 'asc',
+        },
+      ],
+    });
+  }
+
   private async findOwnedDayOrThrow(ownerId: string, tripId: string, dayId: string) {
     const day = await this.prisma.tripDay.findFirst({
       where: {
