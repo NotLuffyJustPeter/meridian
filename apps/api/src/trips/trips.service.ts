@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { PrismaService } from '../database/prisma.service';
 import { CreateTripDto } from './dto/create-trip.dto';
@@ -10,8 +15,11 @@ export class TripsService {
 
   async create(ownerId: string, dto: CreateTripDto) {
     const name = dto.name.trim();
+
     const destination = dto.destination.trim();
+
     const timezone = dto.timezone.trim();
+
     const currency = dto.currency.trim().toUpperCase();
 
     if (!name) {
@@ -91,6 +99,7 @@ export class TripsService {
     }
 
     const existing = await this.findOwnedTripOrThrow(ownerId, tripId);
+
     const name = dto.name !== undefined ? dto.name.trim() : undefined;
 
     const destination = dto.destination !== undefined ? dto.destination.trim() : undefined;
@@ -119,34 +128,95 @@ export class TripsService {
       throw new BadRequestException('endDate must be on or after startDate');
     }
 
+    const datesChanged =
+      startDate.getTime() !== existing.startDate.getTime() ||
+      endDate.getTime() !== existing.endDate.getTime();
+
+    const updateData = {
+      ...(name !== undefined && {
+        name,
+      }),
+
+      ...(destination !== undefined && {
+        destination,
+      }),
+
+      ...(dto.startDate !== undefined && {
+        startDate,
+      }),
+
+      ...(dto.endDate !== undefined && {
+        endDate,
+      }),
+
+      ...(timezone !== undefined && {
+        timezone,
+      }),
+
+      ...(currency !== undefined && {
+        currency,
+      }),
+
+      ...(dto.status !== undefined && {
+        status: dto.status,
+      }),
+    };
+
+    if (datesChanged) {
+      return this.prisma.$transaction(async (transaction) => {
+        const activityCount = await transaction.activity.count({
+          where: {
+            tripDay: {
+              tripId,
+            },
+          },
+        });
+
+        if (activityCount > 0) {
+          throw new ConflictException(
+            'Trip dates cannot be changed after itinerary activities have been added',
+          );
+        }
+
+        await transaction.tripDay.deleteMany({
+          where: {
+            tripId,
+          },
+        });
+
+        const result = await transaction.trip.updateMany({
+          where: {
+            id: tripId,
+            ownerId,
+          },
+          data: updateData,
+        });
+
+        if (result.count === 0) {
+          throw new NotFoundException('Trip not found');
+        }
+
+        const updated = await transaction.trip.findFirst({
+          where: {
+            id: tripId,
+            ownerId,
+          },
+        });
+
+        if (!updated) {
+          throw new NotFoundException('Trip not found');
+        }
+
+        return updated;
+      });
+    }
+
     const result = await this.prisma.trip.updateMany({
       where: {
         id: tripId,
         ownerId,
       },
-      data: {
-        ...(name !== undefined && {
-          name,
-        }),
-        ...(destination !== undefined && {
-          destination,
-        }),
-        ...(dto.startDate !== undefined && {
-          startDate,
-        }),
-        ...(dto.endDate !== undefined && {
-          endDate,
-        }),
-        ...(timezone !== undefined && {
-          timezone,
-        }),
-        ...(currency !== undefined && {
-          currency,
-        }),
-        ...(dto.status !== undefined && {
-          status: dto.status,
-        }),
-      },
+      data: updateData,
     });
 
     if (result.count === 0) {

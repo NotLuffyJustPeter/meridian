@@ -376,6 +376,162 @@ describe('Trips API (e2e)', () => {
     expect(storedTrip).toBeNull();
   });
 
+  it('regenerates empty itinerary days when trip dates change', async () => {
+    const loginA = await registerAndLogin(userA);
+
+    const trip = await createTrip(loginA.accessToken);
+
+    const initialItineraryResponse = await request(app.getHttpServer())
+      .get(`/api/v1/trips/${trip.id}/itinerary`)
+      .set('Authorization', `Bearer ${loginA.accessToken}`)
+      .expect(200);
+
+    const initialItinerary = unwrap(
+      parseJson<
+        PossiblyWrapped<{
+          tripId: string;
+          days: Array<{
+            id: string;
+            dayNumber: number;
+            date: string;
+          }>;
+        }>
+      >(initialItineraryResponse),
+    );
+
+    expect(initialItinerary.days).toHaveLength(9);
+
+    const oldDayIds = initialItinerary.days.map((day) => day.id);
+
+    const updateResponse = await request(app.getHttpServer())
+      .patch(`/api/v1/trips/${trip.id}`)
+      .set('Authorization', `Bearer ${loginA.accessToken}`)
+      .send({
+        startDate: '2026-10-11T00:00:00.000Z',
+
+        endDate: '2026-10-15T00:00:00.000Z',
+      })
+      .expect(200);
+
+    const updatedTrip = unwrap(parseJson<PossiblyWrapped<TripResponse>>(updateResponse));
+
+    expect(updatedTrip.startDate).toBe('2026-10-11T00:00:00.000Z');
+
+    expect(updatedTrip.endDate).toBe('2026-10-15T00:00:00.000Z');
+
+    const regeneratedResponse = await request(app.getHttpServer())
+      .get(`/api/v1/trips/${trip.id}/itinerary`)
+      .set('Authorization', `Bearer ${loginA.accessToken}`)
+      .expect(200);
+
+    const regenerated = unwrap(
+      parseJson<
+        PossiblyWrapped<{
+          tripId: string;
+          days: Array<{
+            id: string;
+            dayNumber: number;
+            date: string;
+          }>;
+        }>
+      >(regeneratedResponse),
+    );
+
+    expect(regenerated.days).toHaveLength(5);
+
+    expect(regenerated.days[0]?.dayNumber).toBe(1);
+
+    expect(regenerated.days[4]?.dayNumber).toBe(5);
+
+    const newDayIds = regenerated.days.map((day) => day.id);
+
+    for (const oldDayId of oldDayIds) {
+      expect(newDayIds).not.toContain(oldDayId);
+    }
+
+    const storedDayCount = await prisma.tripDay.count({
+      where: {
+        tripId: trip.id,
+      },
+    });
+
+    expect(storedDayCount).toBe(5);
+  });
+
+  it('blocks trip date changes when itinerary activities already exist', async () => {
+    const loginA = await registerAndLogin(userA);
+
+    const trip = await createTrip(loginA.accessToken);
+
+    const itineraryResponse = await request(app.getHttpServer())
+      .get(`/api/v1/trips/${trip.id}/itinerary`)
+      .set('Authorization', `Bearer ${loginA.accessToken}`)
+      .expect(200);
+
+    const itinerary = unwrap(
+      parseJson<
+        PossiblyWrapped<{
+          tripId: string;
+          days: Array<{
+            id: string;
+            dayNumber: number;
+            date: string;
+          }>;
+        }>
+      >(itineraryResponse),
+    );
+
+    const firstDay = itinerary.days[0];
+
+    expect(firstDay).toBeDefined();
+
+    if (!firstDay) {
+      throw new Error('Expected itinerary day');
+    }
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/trips/${trip.id}/itinerary/days/${firstDay.id}/activities`)
+      .set('Authorization', `Bearer ${loginA.accessToken}`)
+      .send({
+        title: 'Protected activity',
+        category: 'SIGHTSEEING',
+        startTime: '10:00',
+        endTime: '11:00',
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .patch(`/api/v1/trips/${trip.id}`)
+      .set('Authorization', `Bearer ${loginA.accessToken}`)
+      .send({
+        startDate: '2026-10-11T00:00:00.000Z',
+
+        endDate: '2026-10-15T00:00:00.000Z',
+      })
+      .expect(409);
+
+    const verifyTripResponse = await request(app.getHttpServer())
+      .get(`/api/v1/trips/${trip.id}`)
+      .set('Authorization', `Bearer ${loginA.accessToken}`)
+      .expect(200);
+
+    const storedTrip = unwrap(parseJson<PossiblyWrapped<TripResponse>>(verifyTripResponse));
+
+    expect(storedTrip.startDate).toBe(trip.startDate);
+
+    expect(storedTrip.endDate).toBe(trip.endDate);
+
+    const activityCount = await prisma.activity.count({
+      where: {
+        tripDay: {
+          tripId: trip.id,
+        },
+      },
+    });
+
+    expect(activityCount).toBe(1);
+  });
+
   it('rejects invalid trip mutations and unauthenticated access', async () => {
     const loginA = await registerAndLogin(userA);
 
@@ -403,6 +559,22 @@ describe('Trips API (e2e)', () => {
       .patch(`/api/v1/trips/${trip.id}`)
       .set('Authorization', `Bearer ${loginA.accessToken}`)
       .send({})
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .patch(`/api/v1/trips/${trip.id}`)
+      .set('Authorization', `Bearer ${loginA.accessToken}`)
+      .send({
+        name: null,
+      })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .patch(`/api/v1/trips/${trip.id}`)
+      .set('Authorization', `Bearer ${loginA.accessToken}`)
+      .send({
+        startDate: null,
+      })
       .expect(400);
 
     await request(app.getHttpServer()).get('/api/v1/trips').expect(401);

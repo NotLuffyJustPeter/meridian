@@ -2,10 +2,10 @@ import {
   IsDateString,
   IsIn,
   IsNotEmpty,
-  IsOptional,
   IsString,
   Matches,
   MaxLength,
+  ValidateIf,
 } from 'class-validator';
 
 export const TRIP_STATUSES = ['DRAFT', 'PLANNED', 'ARCHIVED'] as const;
@@ -13,40 +13,40 @@ export const TRIP_STATUSES = ['DRAFT', 'PLANNED', 'ARCHIVED'] as const;
 export type TripStatusValue = (typeof TRIP_STATUSES)[number];
 
 export class UpdateTripDto {
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsString()
   @IsNotEmpty()
   @MaxLength(120)
   name?: string;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsString()
   @IsNotEmpty()
   @MaxLength(160)
   destination?: string;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsDateString()
   startDate?: string;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsDateString()
   endDate?: string;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
   timezone?: string;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsString()
   @Matches(/^[A-Za-z]{3}$/, {
     message: 'currency must be a 3-letter currency code',
   })
   currency?: string;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsIn(TRIP_STATUSES)
   status?: TripStatusValue;
 }
