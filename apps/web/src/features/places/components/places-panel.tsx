@@ -3,10 +3,14 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   Check,
+  ChevronDown,
+  CircleAlert,
   ExternalLink,
   Hotel,
   Landmark,
+  List,
   LoaderCircle,
+  Map as MapIcon,
   MapPin,
   Pencil,
   Plus,
@@ -32,7 +36,6 @@ import type {
   GeocodingResult,
   GeocodingSearchResponse,
 } from '../../geocoding/types/geocoding.types';
-
 import { MeridianMap } from '../../map/components/meridian-map';
 import type {
   CreatePlaceInput,
@@ -87,6 +90,10 @@ interface PlaceFormState {
 type CategoryFilter =
   | 'ALL'
   | PlaceCategory;
+
+type MobileWorkspaceView =
+  | 'places'
+  | 'map';
 
 interface CategoryMeta {
   label: string;
@@ -188,8 +195,7 @@ function isRecord(
   unknown
 > {
   return (
-    typeof value ===
-      'object' &&
+    typeof value === 'object' &&
     value !== null
   );
 }
@@ -205,8 +211,7 @@ function getErrorMessage(
     payload['message'];
 
   if (
-    typeof message ===
-    'string'
+    typeof message === 'string'
   ) {
     return message;
   }
@@ -219,8 +224,7 @@ function getErrorMessage(
         (
           item,
         ): item is string =>
-          typeof item ===
-          'string',
+          typeof item === 'string',
       );
 
     if (
@@ -349,16 +353,14 @@ function placeToForm(
       '',
 
     latitude:
-      place.latitude !==
-      null
+      place.latitude !== null
         ? String(
             place.latitude,
           )
         : '',
 
     longitude:
-      place.longitude !==
-      null
+      place.longitude !== null
         ? String(
             place.longitude,
           )
@@ -377,45 +379,6 @@ function placeToForm(
 
     sourcePlaceId:
       place.sourcePlaceId,
-  };
-}
-
-function getPreviewCoordinates(
-  form: PlaceFormState,
-): {
-  latitude: number;
-  longitude: number;
-} | null {
-  const latitude =
-    Number(
-      form.latitude,
-    );
-
-  const longitude =
-    Number(
-      form.longitude,
-    );
-
-  if (
-    !form.latitude.trim() ||
-    !form.longitude.trim() ||
-    !Number.isFinite(
-      latitude,
-    ) ||
-    !Number.isFinite(
-      longitude,
-    ) ||
-    latitude < -90 ||
-    latitude > 90 ||
-    longitude < -180 ||
-    longitude > 180
-  ) {
-    return null;
-  }
-
-  return {
-    latitude,
-    longitude,
   };
 }
 
@@ -439,12 +402,10 @@ function parseCoordinates(
     longitudeValue.trim();
 
   const hasLatitude =
-    latitudeText.length >
-    0;
+    latitudeText.length > 0;
 
   const hasLongitude =
-    longitudeText.length >
-    0;
+    longitudeText.length > 0;
 
   if (
     hasLatitude !==
@@ -513,6 +474,45 @@ function parseCoordinates(
   };
 }
 
+function getPreviewCoordinates(
+  form: PlaceFormState,
+): {
+  latitude: number;
+  longitude: number;
+} | null {
+  const latitude =
+    Number(
+      form.latitude,
+    );
+
+  const longitude =
+    Number(
+      form.longitude,
+    );
+
+  if (
+    !form.latitude.trim() ||
+    !form.longitude.trim() ||
+    !Number.isFinite(
+      latitude,
+    ) ||
+    !Number.isFinite(
+      longitude,
+    ) ||
+    latitude < -90 ||
+    latitude > 90 ||
+    longitude < -180 ||
+    longitude > 180
+  ) {
+    return null;
+  }
+
+  return {
+    latitude,
+    longitude,
+  };
+}
+
 function isValidWebsite(
   value: string,
 ): boolean {
@@ -530,10 +530,8 @@ function isValidWebsite(
       );
 
     return (
-      url.protocol ===
-        'http:' ||
-      url.protocol ===
-        'https:'
+      url.protocol === 'http:' ||
+      url.protocol === 'https:'
     );
   } catch {
     return false;
@@ -544,10 +542,8 @@ function formatCoordinates(
   place: Place,
 ): string | null {
   if (
-    place.latitude ===
-      null ||
-    place.longitude ===
-      null
+    place.latitude === null ||
+    place.longitude === null
   ) {
     return null;
   }
@@ -794,10 +790,8 @@ function PlaceCard({
         }
 
         if (
-          event.key ===
-            'Enter' ||
-          event.key ===
-            ' '
+          event.key === 'Enter' ||
+          event.key === ' '
         ) {
           event.preventDefault();
           onSelect();
@@ -1060,6 +1054,73 @@ function NoResults() {
   );
 }
 
+function EmptyMapState({
+  totalPlaces,
+  onShowPlaces,
+}: {
+  totalPlaces: number;
+  onShowPlaces: () => void;
+}) {
+  return (
+    <div className="relative flex h-[480px] items-center justify-center overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-[#081018] px-6 sm:h-[560px] lg:h-[650px]">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-1/2 top-1/2 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/[0.035]" />
+
+        <div className="absolute left-1/2 top-1/2 h-[290px] w-[290px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/[0.035]" />
+
+        <div className="absolute left-1/2 top-1/2 h-[170px] w-[170px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-sky-300/[0.06]" />
+
+        <div className="absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full bg-sky-300/[0.05] blur-3xl" />
+      </div>
+
+      <div className="relative max-w-md text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-sky-300/10 bg-sky-300/[0.05] text-sky-200">
+          <MapPin
+            className="h-6 w-6"
+            strokeWidth={1.5}
+          />
+        </div>
+
+        <p className="mt-6 text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-300/60">
+          Journey map
+        </p>
+
+        <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-white">
+          Nothing mapped yet.
+        </h3>
+
+        <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-white/35">
+          You have{' '}
+          {totalPlaces}{' '}
+          saved{' '}
+          {totalPlaces === 1
+            ? 'place'
+            : 'places'}
+          , but none of them have a
+          location yet. Edit a place
+          or search for its location
+          to add it to the map.
+        </p>
+
+        <button
+          type="button"
+          onClick={
+            onShowPlaces
+          }
+          className="mt-6 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-2.5 text-sm font-medium text-white/70 transition hover:bg-white/[0.08] hover:text-white lg:hidden"
+        >
+          <List
+            className="h-4 w-4"
+            strokeWidth={1.8}
+          />
+
+          View saved places
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function FieldLabel({
   children,
 }: {
@@ -1100,8 +1161,7 @@ function PlaceDialog({
     () => void;
 }) {
   const isEditing =
-    dialog.mode ===
-    'edit';
+    dialog.mode === 'edit';
 
   const [
     locationQuery,
@@ -1144,6 +1204,20 @@ function PlaceDialog({
     setHasSearched,
   ] =
     useState(false);
+
+  const [
+    showAdvanced,
+    setShowAdvanced,
+  ] =
+    useState(false);
+
+  const selectedSourceId =
+    form.sourcePlaceId;
+
+  const previewCoordinates =
+    getPreviewCoordinates(
+      form,
+    );
 
   async function searchLocation():
     Promise<void> {
@@ -1305,17 +1379,9 @@ function PlaceDialog({
     });
   }
 
-  const selectedSourceId =
-    form.sourcePlaceId;
-
-  const previewCoordinates =
-    getPreviewCoordinates(
-      form,
-    );
-
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 backdrop-blur-sm sm:p-5"
       role="dialog"
       aria-modal="true"
       aria-label={
@@ -1324,9 +1390,9 @@ function PlaceDialog({
           : 'Add place'
       }
     >
-      <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[28px] border border-white/10 bg-[#0c1118] shadow-[0_30px_120px_rgba(0,0,0,0.65)]">
-        <div className="flex items-start justify-between border-b border-white/[0.07] px-6 py-5">
-          <div>
+      <div className="flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[#0c1118] shadow-[0_30px_120px_rgba(0,0,0,0.65)]">
+        <header className="z-20 flex shrink-0 items-start justify-between border-b border-white/[0.07] bg-[#0c1118]/95 px-5 py-4 backdrop-blur-xl sm:px-6 sm:py-5">
+          <div className="min-w-0 pr-4">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-300/70">
               Saved place
             </p>
@@ -1337,7 +1403,7 @@ function PlaceDialog({
                 : 'Add a place'}
             </h3>
 
-            <p className="mt-1 max-w-xl text-sm leading-6 text-white/35">
+            <p className="mt-1 max-w-xl text-sm leading-5 text-white/35">
               Search for a real
               location or enter the
               details manually.
@@ -1358,9 +1424,9 @@ function PlaceDialog({
               strokeWidth={1.8}
             />
           </button>
-        </div>
+        </header>
 
-        <div className="space-y-6 p-6">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6 sm:py-6">
           <section className="rounded-2xl border border-sky-300/10 bg-sky-300/[0.025] p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -1371,8 +1437,8 @@ function PlaceDialog({
                 <p className="mt-1 text-xs leading-5 text-white/30">
                   Search OpenStreetMap
                   and select a result
-                  to fill the place
-                  details automatically.
+                  to fill the details
+                  automatically.
                 </p>
               </div>
 
@@ -1412,8 +1478,7 @@ function PlaceDialog({
                     event,
                   ) => {
                     if (
-                      event.key ===
-                      'Enter'
+                      event.key === 'Enter'
                     ) {
                       event.preventDefault();
 
@@ -1440,7 +1505,7 @@ function PlaceDialog({
                 onClick={() => {
                   void searchLocation();
                 }}
-                className="inline-flex min-w-[110px] items-center justify-center gap-2 rounded-xl border border-sky-300/15 bg-sky-300/[0.08] px-4 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-300/[0.12] disabled:cursor-not-allowed disabled:opacity-35"
+                className="inline-flex min-w-[112px] items-center justify-center gap-2 rounded-xl border border-sky-300/15 bg-sky-300/[0.08] px-4 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-300/[0.12] disabled:cursor-not-allowed disabled:opacity-35"
               >
                 {searching ? (
                   <>
@@ -1493,104 +1558,102 @@ function PlaceDialog({
             {searchResults.length >
               0 && (
               <div className="mt-4 overflow-hidden rounded-xl border border-white/[0.07] bg-black/10">
-                {searchResults.map(
-                  (
-                    result,
-                    index,
-                  ) => {
-                    const selected =
-                      selectedSourceId ===
-                      result.providerPlaceId;
+                <div className="max-h-[265px] overflow-y-auto overscroll-contain">
+                  {searchResults.map(
+                    (
+                      result,
+                      index,
+                    ) => {
+                      const selected =
+                        selectedSourceId ===
+                        result.providerPlaceId;
 
-                    return (
-                      <button
-                        key={`${result.provider}:${result.providerPlaceId}`}
-                        type="button"
-                        onClick={() => {
-                          selectSearchResult(
-                            result,
-                          );
-                        }}
-                        className={[
-                          'flex w-full items-start gap-3 px-4 py-4 text-left transition',
-                          index > 0
-                            ? 'border-t border-white/[0.06]'
-                            : '',
-                          selected
-                            ? 'bg-sky-300/[0.07]'
-                            : 'hover:bg-white/[0.035]',
-                        ].join(
-                          ' ',
-                        )}
-                      >
-                        <div
+                      return (
+                        <button
+                          key={`${result.provider}:${result.providerPlaceId}`}
+                          type="button"
+                          onClick={() => {
+                            selectSearchResult(
+                              result,
+                            );
+                          }}
                           className={[
-                            'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border',
+                            'flex w-full items-start gap-3 px-4 py-4 text-left transition',
+                            index > 0
+                              ? 'border-t border-white/[0.06]'
+                              : '',
                             selected
-                              ? 'border-sky-300/20 bg-sky-300/10 text-sky-200'
-                              : 'border-white/[0.07] bg-white/[0.03] text-white/35',
-                          ].join(
-                            ' ',
-                          )}
+                              ? 'bg-sky-300/[0.07]'
+                              : 'hover:bg-white/[0.035]',
+                          ].join(' ')}
                         >
-                          {selected ? (
-                            <Check
-                              className="h-4 w-4"
-                              strokeWidth={2}
-                            />
-                          ) : (
-                            <MapPin
-                              className="h-4 w-4"
-                              strokeWidth={1.7}
-                            />
-                          )}
-                        </div>
+                          <div
+                            className={[
+                              'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border',
+                              selected
+                                ? 'border-sky-300/20 bg-sky-300/10 text-sky-200'
+                                : 'border-white/[0.07] bg-white/[0.03] text-white/35',
+                            ].join(' ')}
+                          >
+                            {selected ? (
+                              <Check
+                                className="h-4 w-4"
+                                strokeWidth={2}
+                              />
+                            ) : (
+                              <MapPin
+                                className="h-4 w-4"
+                                strokeWidth={1.7}
+                              />
+                            )}
+                          </div>
 
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="truncate text-sm font-semibold text-white">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="truncate text-sm font-semibold text-white">
+                                {
+                                  result.name
+                                }
+                              </p>
+
+                              {selected && (
+                                <span className="rounded-full border border-sky-300/15 bg-sky-300/[0.06] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-sky-200/80">
+                                  Selected
+                                </span>
+                              )}
+                            </div>
+
+                            <p className="mt-1 line-clamp-2 text-xs leading-5 text-white/35">
                               {
-                                result.name
+                                result.displayName
                               }
                             </p>
 
-                            {selected && (
-                              <span className="rounded-full border border-sky-300/15 bg-sky-300/[0.06] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-sky-200/80">
-                                Selected
-                              </span>
-                            )}
-                          </div>
-
-                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-white/35">
-                            {
-                              result.displayName
-                            }
-                          </p>
-
-                          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-white/25">
-                            <span>
-                              {result.latitude.toFixed(
-                                4,
-                              )}
-                              ,{' '}
-                              {result.longitude.toFixed(
-                                4,
-                              )}
-                            </span>
-
-                            {result.type && (
+                            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-white/25">
                               <span>
-                                {
-                                  result.type
-                                }
+                                {result.latitude.toFixed(
+                                  4,
+                                )}
+                                ,{' '}
+                                {result.longitude.toFixed(
+                                  4,
+                                )}
                               </span>
-                            )}
+
+                              {result.type && (
+                                <span>
+                                  {
+                                    result.type
+                                  }
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </button>
-                    );
-                  },
-                )}
+                        </button>
+                      );
+                    },
+                  )}
+                </div>
 
                 {searchAttribution && (
                   <div className="border-t border-white/[0.06] px-4 py-2.5 text-[9px] uppercase tracking-[0.12em] text-white/20">
@@ -1605,11 +1668,13 @@ function PlaceDialog({
 
           {form.sourceProvider &&
             form.sourcePlaceId && (
-              <div className="flex items-center gap-2 rounded-xl border border-emerald-300/10 bg-emerald-300/[0.035] px-4 py-3">
-                <Check
-                  className="h-4 w-4 shrink-0 text-emerald-300"
-                  strokeWidth={2}
-                />
+              <div className="flex items-center gap-3 rounded-xl border border-emerald-300/10 bg-emerald-300/[0.035] px-4 py-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-emerald-300/10 bg-emerald-300/[0.05]">
+                  <Check
+                    className="h-4 w-4 text-emerald-300"
+                    strokeWidth={2}
+                  />
+                </div>
 
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-emerald-100/80">
@@ -1629,236 +1694,331 @@ function PlaceDialog({
               </div>
             )}
 
-            {previewCoordinates && (
-              <GeocodingPreviewMap
-                latitude={
-                  previewCoordinates.latitude
-                }
-                longitude={
-                  previewCoordinates.longitude
-                }
-                label={
-                  form.name.trim() ||
-                  'Selected location'
-                }
-              />
-            )}
-
-          <label className="block">
-            <FieldLabel>
-              Name
-            </FieldLabel>
-
-            <input
-              value={
-                form.name
+          {previewCoordinates && (
+            <GeocodingPreviewMap
+              latitude={
+                previewCoordinates.latitude
               }
-              onChange={(
-                event,
-              ) =>
-                onChange({
-                  ...form,
-                  name:
-                    event
-                      .target
-                      .value,
-                })
+              longitude={
+                previewCoordinates.longitude
               }
-              maxLength={160}
-              placeholder="Duomo di Milano"
-              className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-sky-300/30"
+              label={
+                form.name.trim() ||
+                'Selected location'
+              }
             />
-          </label>
+          )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block">
-              <FieldLabel>
-                Category
-              </FieldLabel>
+          <section>
+            <div className="mb-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/30">
+                Place details
+              </p>
 
-              <select
-                value={
-                  form.category
-                }
-                onChange={(
-                  event,
-                ) =>
-                  onChange({
-                    ...form,
-                    category:
-                      event
-                        .target
-                        .value as PlaceCategory,
-                  })
-                }
-                className="mt-2 w-full rounded-xl border border-white/[0.08] bg-[#111720] px-4 py-3 text-sm text-white outline-none focus:border-sky-300/30"
+              <p className="mt-1 text-xs leading-5 text-white/25">
+                You can adjust the
+                information before
+                saving.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <label className="block">
+                <FieldLabel>
+                  Name
+                </FieldLabel>
+
+                <input
+                  value={
+                    form.name
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    onChange({
+                      ...form,
+                      name:
+                        event
+                          .target
+                          .value,
+                    })
+                  }
+                  maxLength={160}
+                  placeholder="Duomo di Milano"
+                  className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-sky-300/30"
+                />
+              </label>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <FieldLabel>
+                    Category
+                  </FieldLabel>
+
+                  <select
+                    value={
+                      form.category
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      onChange({
+                        ...form,
+                        category:
+                          event
+                            .target
+                            .value as PlaceCategory,
+                      })
+                    }
+                    className="mt-2 w-full rounded-xl border border-white/[0.08] bg-[#111720] px-4 py-3 text-sm text-white outline-none focus:border-sky-300/30"
+                  >
+                    {PLACE_CATEGORIES.map(
+                      (
+                        category,
+                      ) => (
+                        <option
+                          key={
+                            category
+                          }
+                          value={
+                            category
+                          }
+                        >
+                          {
+                            CATEGORY_META[
+                              category
+                            ].label
+                          }
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <FieldLabel>
+                    Website
+                  </FieldLabel>
+
+                  <input
+                    type="url"
+                    value={
+                      form.website
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      onChange({
+                        ...form,
+                        website:
+                          event
+                            .target
+                            .value,
+                      })
+                    }
+                    maxLength={500}
+                    placeholder="https://..."
+                    className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none placeholder:text-white/20 focus:border-sky-300/30"
+                  />
+                </label>
+              </div>
+
+              <label className="block">
+                <FieldLabel>
+                  Address
+                </FieldLabel>
+
+                <input
+                  value={
+                    form.address
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    onChange({
+                      ...form,
+                      address:
+                        event
+                          .target
+                          .value,
+                    })
+                  }
+                  maxLength={300}
+                  placeholder="Piazza del Duomo, Milano"
+                  className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none placeholder:text-white/20 focus:border-sky-300/30"
+                />
+              </label>
+
+              <label className="block">
+                <FieldLabel>
+                  Notes
+                </FieldLabel>
+
+                <textarea
+                  value={
+                    form.notes
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    onChange({
+                      ...form,
+                      notes:
+                        event
+                          .target
+                          .value,
+                    })
+                  }
+                  maxLength={2000}
+                  rows={3}
+                  placeholder="Reservations, best time to visit, reminders..."
+                  className="mt-2 w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-white/20 focus:border-sky-300/30"
+                />
+              </label>
+            </div>
+          </section>
+
+          <section className="overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.018]">
+            <button
+              type="button"
+              onClick={() => {
+                setShowAdvanced(
+                  (current) =>
+                    !current,
+                );
+              }}
+              aria-expanded={
+                showAdvanced
+              }
+              aria-controls="advanced-location-details"
+              className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition hover:bg-white/[0.025]"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.025]">
+                  <MapPin
+                    className="h-4 w-4 text-white/35"
+                    strokeWidth={1.6}
+                  />
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-white/65">
+                    Advanced location
+                    details
+                  </p>
+
+                  <p className="mt-0.5 text-xs text-white/25">
+                    Coordinates and
+                    provider metadata.
+                  </p>
+                </div>
+              </div>
+
+              <ChevronDown
+                className={[
+                  'h-4 w-4 shrink-0 text-white/30 transition-transform duration-200',
+                  showAdvanced
+                    ? 'rotate-180'
+                    : '',
+                ].join(' ')}
+                strokeWidth={1.8}
+              />
+            </button>
+
+            {showAdvanced && (
+              <div
+                id="advanced-location-details"
+                className="space-y-4 border-t border-white/[0.06] px-4 py-4"
               >
-                {PLACE_CATEGORIES.map(
-                  (
-                    category,
-                  ) => (
-                    <option
-                      key={
-                        category
-                      }
+                <div>
+                  <div className="flex items-center justify-between gap-3">
+                    <FieldLabel>
+                      Coordinates
+                    </FieldLabel>
+
+                    <span className="text-[9px] uppercase tracking-[0.14em] text-white/20">
+                      Manual override
+                    </span>
+                  </div>
+
+                  <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                    <input
+                      type="number"
+                      step="any"
                       value={
-                        category
+                        form.latitude
                       }
-                    >
-                      {
-                        CATEGORY_META[
-                          category
-                        ].label
+                      onChange={(
+                        event,
+                      ) =>
+                        onChange({
+                          ...form,
+                          latitude:
+                            event
+                              .target
+                              .value,
+                        })
                       }
-                    </option>
-                  ),
-                )}
-              </select>
-            </label>
+                      placeholder="Latitude"
+                      className="w-full rounded-xl border border-white/[0.08] bg-black/10 px-4 py-3 font-mono text-sm text-white outline-none placeholder:font-sans placeholder:text-white/20 focus:border-sky-300/30"
+                    />
 
-            <label className="block">
-              <FieldLabel>
-                Website
-              </FieldLabel>
+                    <input
+                      type="number"
+                      step="any"
+                      value={
+                        form.longitude
+                      }
+                      onChange={(
+                        event,
+                      ) =>
+                        onChange({
+                          ...form,
+                          longitude:
+                            event
+                              .target
+                              .value,
+                        })
+                      }
+                      placeholder="Longitude"
+                      className="w-full rounded-xl border border-white/[0.08] bg-black/10 px-4 py-3 font-mono text-sm text-white outline-none placeholder:font-sans placeholder:text-white/20 focus:border-sky-300/30"
+                    />
+                  </div>
 
-              <input
-                type="url"
-                value={
-                  form.website
-                }
-                onChange={(
-                  event,
-                ) =>
-                  onChange({
-                    ...form,
-                    website:
-                      event
-                        .target
-                        .value,
-                  })
-                }
-                maxLength={500}
-                placeholder="https://..."
-                className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none placeholder:text-white/20 focus:border-sky-300/30"
-              />
-            </label>
-          </div>
+                  <p className="mt-2 text-xs leading-5 text-white/20">
+                    Search results
+                    normally populate
+                    these values
+                    automatically.
+                  </p>
+                </div>
 
-          <label className="block">
-            <FieldLabel>
-              Address
-            </FieldLabel>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3">
+                    <p className="text-[9px] uppercase tracking-[0.14em] text-white/20">
+                      Source provider
+                    </p>
 
-            <input
-              value={
-                form.address
-              }
-              onChange={(
-                event,
-              ) =>
-                onChange({
-                  ...form,
-                  address:
-                    event
-                      .target
-                      .value,
-                })
-              }
-              maxLength={300}
-              placeholder="Piazza del Duomo, Milano"
-              className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none placeholder:text-white/20 focus:border-sky-300/30"
-            />
-          </label>
+                    <p className="mt-1.5 truncate font-mono text-xs text-white/45">
+                      {form.sourceProvider ??
+                        'Manual'}
+                    </p>
+                  </div>
 
-          <div>
-            <div className="flex items-center justify-between">
-              <FieldLabel>
-                Coordinates
-              </FieldLabel>
+                  <div className="rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3">
+                    <p className="text-[9px] uppercase tracking-[0.14em] text-white/20">
+                      Provider place ID
+                    </p>
 
-              <span className="text-[10px] uppercase tracking-[0.16em] text-white/20">
-                Advanced
-              </span>
-            </div>
-
-            <div className="mt-2 grid gap-4 sm:grid-cols-2">
-              <input
-                type="number"
-                step="any"
-                value={
-                  form.latitude
-                }
-                onChange={(
-                  event,
-                ) =>
-                  onChange({
-                    ...form,
-                    latitude:
-                      event
-                        .target
-                        .value,
-                  })
-                }
-                placeholder="Latitude · 45.4642"
-                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 font-mono text-sm text-white outline-none placeholder:font-sans placeholder:text-white/20 focus:border-sky-300/30"
-              />
-
-              <input
-                type="number"
-                step="any"
-                value={
-                  form.longitude
-                }
-                onChange={(
-                  event,
-                ) =>
-                  onChange({
-                    ...form,
-                    longitude:
-                      event
-                        .target
-                        .value,
-                  })
-                }
-                placeholder="Longitude · 9.1916"
-                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 font-mono text-sm text-white outline-none placeholder:font-sans placeholder:text-white/20 focus:border-sky-300/30"
-              />
-            </div>
-
-            <p className="mt-2 text-xs leading-5 text-white/25">
-              Usually filled
-              automatically when a
-              search result is
-              selected.
-            </p>
-          </div>
-
-          <label className="block">
-            <FieldLabel>
-              Notes
-            </FieldLabel>
-
-            <textarea
-              value={
-                form.notes
-              }
-              onChange={(
-                event,
-              ) =>
-                onChange({
-                  ...form,
-                  notes:
-                    event
-                      .target
-                      .value,
-                })
-              }
-              maxLength={2000}
-              rows={4}
-              placeholder="Reservations, best time to visit, reminders..."
-              className="mt-2 w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-white/20 focus:border-sky-300/30"
-            />
-          </label>
+                    <p className="mt-1.5 truncate font-mono text-xs text-white/45">
+                      {form.sourcePlaceId ??
+                        '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
 
           {error && (
             <div className="rounded-xl border border-rose-300/10 bg-rose-300/[0.04] px-4 py-3 text-sm text-rose-200/80">
@@ -1867,7 +2027,7 @@ function PlaceDialog({
           )}
         </div>
 
-        <div className="flex flex-col-reverse gap-3 border-t border-white/[0.07] px-6 py-5 sm:flex-row sm:justify-end">
+        <footer className="z-20 flex shrink-0 flex-col-reverse gap-2 border-t border-white/[0.07] bg-[#0c1118]/95 px-5 py-4 backdrop-blur-xl sm:flex-row sm:justify-end sm:px-6">
           <button
             type="button"
             onClick={onClose}
@@ -1886,8 +2046,7 @@ function PlaceDialog({
               submitting ||
               form.name
                 .trim()
-                .length ===
-                0
+                .length === 0
             }
             className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
           >
@@ -1897,7 +2056,7 @@ function PlaceDialog({
                 ? 'Save changes'
                 : 'Add place'}
           </button>
-        </div>
+        </footer>
       </div>
     </div>
   );
@@ -2010,6 +2169,14 @@ export function PlacesPanel({
   ] =
     useState<string | null>(
       null,
+    );
+
+  const [
+    mobileView,
+    setMobileView,
+  ] =
+    useState<MobileWorkspaceView>(
+      'places',
     );
 
   const placeCardRefs =
@@ -2179,10 +2346,8 @@ export function PlacesPanel({
 
       return state.places.filter(
         (place) =>
-          place.latitude !==
-            null &&
-          place.longitude !==
-            null,
+          place.latitude !== null &&
+          place.longitude !== null,
       ).length;
     }, [state]);
 
@@ -2202,6 +2367,39 @@ export function PlacesPanel({
         ),
       ).size;
     }, [state]);
+
+  const selectedPlace =
+    useMemo(() => {
+      if (
+        state.status !==
+          'success' ||
+        !selectedPlaceId
+      ) {
+        return null;
+      }
+
+      return (
+        state.places.find(
+          (place) =>
+            place.id ===
+            selectedPlaceId,
+        ) ?? null
+      );
+    }, [
+      selectedPlaceId,
+      state,
+    ]);
+
+  const selectedPlaceIsMapped =
+    selectedPlace !== null &&
+    selectedPlace.latitude !==
+      null &&
+    selectedPlace.longitude !==
+      null;
+
+  const unmappedCount =
+    state.places.length -
+    mappedCount;
 
   useEffect(() => {
     if (
@@ -2636,7 +2834,7 @@ export function PlacesPanel({
           <button
             type="button"
             onClick={openCreate}
-            className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
           >
             <Plus
               className="h-4 w-4"
@@ -2647,33 +2845,33 @@ export function PlacesPanel({
         </div>
 
         {totalPlaces > 0 && (
-          <div className="mt-7 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-white/30">
+          <div className="mt-7 grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4 sm:p-5">
+              <p className="truncate text-[9px] uppercase tracking-[0.14em] text-white/30 sm:text-[10px] sm:tracking-[0.18em]">
                 Saved
               </p>
 
-              <p className="mt-3 text-2xl font-semibold text-white">
+              <p className="mt-2 text-xl font-semibold text-white sm:mt-3 sm:text-2xl">
                 {totalPlaces}
               </p>
             </div>
 
-            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-white/30">
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4 sm:p-5">
+              <p className="truncate text-[9px] uppercase tracking-[0.14em] text-white/30 sm:text-[10px] sm:tracking-[0.18em]">
                 Ready for map
               </p>
 
-              <p className="mt-3 text-2xl font-semibold text-white">
+              <p className="mt-2 text-xl font-semibold text-white sm:mt-3 sm:text-2xl">
                 {mappedCount}
               </p>
             </div>
 
-            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-white/30">
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4 sm:p-5">
+              <p className="truncate text-[9px] uppercase tracking-[0.14em] text-white/30 sm:text-[10px] sm:tracking-[0.18em]">
                 Categories
               </p>
 
-              <p className="mt-3 text-2xl font-semibold text-white">
+              <p className="mt-2 text-xl font-semibold text-white sm:mt-3 sm:text-2xl">
                 {categoryCount}
               </p>
             </div>
@@ -2685,234 +2883,398 @@ export function PlacesPanel({
             onAdd={openCreate}
           />
         ) : (
-          <div className="mt-7 grid items-start gap-6 lg:grid-cols-[minmax(320px,0.72fr)_minmax(0,1.28fr)]">
-            <aside className="min-w-0 overflow-hidden rounded-[1.65rem] border border-white/[0.07] bg-white/[0.018]">
-              <div className="border-b border-white/[0.06] px-5 py-5">
-                <div className="flex items-center justify-between">
+          <>
+            <div
+              className="mt-6 grid grid-cols-2 gap-1 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-1 lg:hidden"
+              role="tablist"
+              aria-label="Places workspace view"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={
+                  mobileView ===
+                  'places'
+                }
+                onClick={() => {
+                  setMobileView(
+                    'places',
+                  );
+                }}
+                className={[
+                  'flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-medium transition',
+                  mobileView ===
+                  'places'
+                    ? 'bg-white/[0.09] text-white shadow-sm'
+                    : 'text-white/35 hover:text-white/60',
+                ].join(' ')}
+              >
+                <List
+                  className="h-4 w-4"
+                  strokeWidth={1.8}
+                />
+
+                Saved places
+
+                <span className="rounded-full bg-black/20 px-1.5 py-0.5 text-[9px] text-white/35">
+                  {
+                    totalPlaces
+                  }
+                </span>
+              </button>
+
+              <button
+                type="button"
+                role="tab"
+                aria-selected={
+                  mobileView ===
+                  'map'
+                }
+                onClick={() => {
+                  setMobileView(
+                    'map',
+                  );
+                }}
+                className={[
+                  'flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-medium transition',
+                  mobileView ===
+                  'map'
+                    ? 'bg-sky-300/[0.09] text-sky-100 shadow-sm'
+                    : 'text-white/35 hover:text-white/60',
+                ].join(' ')}
+              >
+                <MapIcon
+                  className="h-4 w-4"
+                  strokeWidth={1.8}
+                />
+
+                Journey map
+
+                <span className="rounded-full bg-black/20 px-1.5 py-0.5 text-[9px] text-white/35">
+                  {
+                    mappedCount
+                  }
+                </span>
+              </button>
+            </div>
+
+            <div className="mt-4 grid items-start gap-6 lg:mt-7 lg:grid-cols-[minmax(320px,0.72fr)_minmax(0,1.28fr)]">
+              <aside
+                className={[
+                  'min-w-0 overflow-hidden rounded-[1.65rem] border border-white/[0.07] bg-white/[0.018]',
+                  mobileView ===
+                  'places'
+                    ? 'block'
+                    : 'hidden',
+                  'lg:block',
+                ].join(' ')}
+              >
+                <div className="border-b border-white/[0.06] px-5 py-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-sky-300/60">
+                        Collection
+                      </p>
+
+                      <h3 className="mt-1 text-lg font-semibold text-white">
+                        Saved places
+                      </h3>
+                    </div>
+
+                    <span className="text-[10px] uppercase tracking-[0.16em] text-white/25">
+                      {visiblePlaces.length}{' '}
+                      shown
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-4 p-4">
+                  <div className="relative">
+                    <Search
+                      className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30"
+                    />
+
+                    <input
+                      type="search"
+                      value={search}
+                      onChange={(
+                        event,
+                      ) =>
+                        setSearch(
+                          event.target.value,
+                        )
+                      }
+                      placeholder="Search places..."
+                      className="w-full rounded-xl border border-white/[0.08] bg-black/10 py-3 pl-10 pr-4 text-sm text-white outline-none placeholder:text-white/20"
+                    />
+                  </div>
+
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCategoryFilter(
+                          'ALL',
+                        )
+                      }
+                      className={[
+                        'shrink-0 rounded-full border px-3 py-1.5 text-xs transition',
+                        categoryFilter ===
+                        'ALL'
+                          ? 'border-white/20 bg-white/[0.1] text-white'
+                          : 'border-white/[0.07] text-white/40',
+                      ].join(' ')}
+                    >
+                      All
+                    </button>
+
+                    {PLACE_CATEGORIES.map(
+                      (
+                        category,
+                      ) => {
+                        const meta =
+                          CATEGORY_META[
+                            category
+                          ];
+
+                        const Icon =
+                          meta.icon;
+
+                        const active =
+                          categoryFilter ===
+                          category;
+
+                        return (
+                          <button
+                            key={
+                              category
+                            }
+                            type="button"
+                            onClick={() =>
+                              setCategoryFilter(
+                                category,
+                              )
+                            }
+                            className={[
+                              'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition',
+                              active
+                                ? meta.badgeClassName
+                                : 'border-white/[0.07] text-white/40',
+                            ].join(' ')}
+                          >
+                            <Icon
+                              className="h-3.5 w-3.5"
+                            />
+
+                            {
+                              meta.filterLabel
+                            }
+                          </button>
+                        );
+                      },
+                    )}
+                  </div>
+                </div>
+
+                <div className="border-t border-white/[0.06]">
+                  {visiblePlaces.length ===
+                  0 ? (
+                    <div className="p-4">
+                      <NoResults />
+                    </div>
+                  ) : (
+                    <div className="space-y-3 p-4 lg:max-h-[620px] lg:overflow-y-auto">
+                      {visiblePlaces.map(
+                        (place) => (
+                          <PlaceCard
+                            key={
+                              place.id
+                            }
+                            place={
+                              place
+                            }
+                            selected={
+                              selectedPlaceId ===
+                              place.id
+                            }
+                            cardRef={(
+                              element,
+                            ) => {
+                              registerPlaceCard(
+                                place.id,
+                                element,
+                              );
+                            }}
+                            onSelect={() => {
+                              setSelectedPlaceId(
+                                place.id,
+                              );
+                            }}
+                            onEdit={() =>
+                              openEdit(
+                                place,
+                              )
+                            }
+                            onDelete={() => {
+                              setDeleteError(
+                                null,
+                              );
+
+                              setDeleteTarget(
+                                place,
+                              );
+                            }}
+                          />
+                        ),
+                      )}
+                    </div>
+                  )}
+                </div>
+              </aside>
+
+              <div
+                className={[
+                  'min-w-0 lg:sticky lg:top-6 lg:block',
+                  mobileView ===
+                  'map'
+                    ? 'block'
+                    : 'hidden',
+                ].join(' ')}
+              >
+                <div className="mb-4 flex items-end justify-between">
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.18em] text-sky-300/60">
-                      Collection
+                      Explore
                     </p>
 
                     <h3 className="mt-1 text-lg font-semibold text-white">
-                      Saved places
+                      Journey map
                     </h3>
                   </div>
 
-                  <span className="text-[10px] uppercase tracking-[0.16em] text-white/25">
-                    {visiblePlaces.length}{' '}
-                    shown
-                  </span>
-                </div>
-              </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={[
+                        'h-1.5 w-1.5 rounded-full',
+                        mappedCount > 0
+                          ? 'bg-emerald-300'
+                          : 'bg-amber-300',
+                      ].join(' ')}
+                    />
 
-              <div className="space-y-4 p-4">
-                <div className="relative">
-                  <Search
-                    className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30"
-                  />
-
-                  <input
-                    type="search"
-                    value={search}
-                    onChange={(
-                      event,
-                    ) =>
-                      setSearch(
-                        event.target.value,
-                      )
-                    }
-                    placeholder="Search places..."
-                    className="w-full rounded-xl border border-white/[0.08] bg-black/10 py-3 pl-10 pr-4 text-sm text-white outline-none placeholder:text-white/20"
-                  />
+                    <span className="text-[10px] uppercase tracking-[0.16em] text-white/25">
+                      {mappedCount > 0
+                        ? 'Interactive'
+                        : 'Waiting for locations'}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setCategoryFilter(
-                        'ALL',
-                      )
+                {mappedCount ===
+                0 ? (
+                  <EmptyMapState
+                    totalPlaces={
+                      totalPlaces
                     }
-                    className={[
-                      'shrink-0 rounded-full border px-3 py-1.5 text-xs transition',
-                      categoryFilter ===
-                      'ALL'
-                        ? 'border-white/20 bg-white/[0.1] text-white'
-                        : 'border-white/[0.07] text-white/40',
-                    ].join(' ')}
-                  >
-                    All
-                  </button>
-
-                  {PLACE_CATEGORIES.map(
-                    (
-                      category,
-                    ) => {
-                      const meta =
-                        CATEGORY_META[
-                          category
-                        ];
-
-                      const Icon =
-                        meta.icon;
-
-                      const active =
-                        categoryFilter ===
-                        category;
-
-                      return (
-                        <button
-                          key={
-                            category
-                          }
-                          type="button"
-                          onClick={() =>
-                            setCategoryFilter(
-                              category,
-                            )
-                          }
-                          className={[
-                            'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition',
-                            active
-                              ? meta.badgeClassName
-                              : 'border-white/[0.07] text-white/40',
-                          ].join(
-                            ' ',
-                          )}
-                        >
-                          <Icon
-                            className="h-3.5 w-3.5"
+                    onShowPlaces={() => {
+                      setMobileView(
+                        'places',
+                      );
+                    }}
+                  />
+                ) : (
+                  <>
+                    {!selectedPlaceIsMapped &&
+                      selectedPlace && (
+                        <div className="mb-3 flex items-start gap-3 rounded-2xl border border-amber-300/10 bg-amber-300/[0.035] px-4 py-3">
+                          <CircleAlert
+                            className="mt-0.5 h-4 w-4 shrink-0 text-amber-200/70"
+                            strokeWidth={1.7}
                           />
 
-                          {
-                            meta.filterLabel
-                          }
-                        </button>
-                      );
-                    },
-                  )}
-                </div>
-              </div>
+                          <div>
+                            <p className="text-xs font-medium text-amber-100/75">
+                              {
+                                selectedPlace.name
+                              }{' '}
+                              isn&apos;t mapped yet.
+                            </p>
 
-              <div className="border-t border-white/[0.06]">
-                {visiblePlaces.length ===
-                0 ? (
-                  <div className="p-4">
-                    <NoResults />
-                  </div>
-                ) : (
-                  <div className="max-h-[620px] space-y-3 overflow-y-auto p-4">
-                    {visiblePlaces.map(
-                      (place) => (
-                        <PlaceCard
-                          key={
-                            place.id
-                          }
-                          place={
-                            place
-                          }
-                          selected={
-                            selectedPlaceId ===
-                            place.id
-                          }
-                          cardRef={(
-                            element,
-                          ) => {
-                            registerPlaceCard(
-                              place.id,
-                              element,
-                            );
-                          }}
-                          onSelect={() => {
-                            setSelectedPlaceId(
-                              place.id,
-                            );
-                          }}
-                          onEdit={() =>
-                            openEdit(
-                              place,
-                            )
-                          }
-                          onDelete={() => {
-                            setDeleteError(
-                              null,
-                            );
+                            <p className="mt-1 text-xs leading-5 text-white/25">
+                              Search for its location
+                              or add coordinates to
+                              place it on the journey
+                              map.
+                            </p>
+                          </div>
+                        </div>
+                      )}
 
-                            setDeleteTarget(
-                              place,
-                            );
-                          }}
+                    <MeridianMap
+                      places={
+                        state.places
+                      }
+                      selectedPlaceId={
+                        selectedPlaceId
+                      }
+                      onSelectPlace={(
+                        placeId,
+                      ) => {
+                        setSearch(
+                          '',
+                        );
+
+                        setCategoryFilter(
+                          'ALL',
+                        );
+
+                        setSelectedPlaceId(
+                          placeId,
+                        );
+                      }}
+                      heightClassName="h-[480px] sm:h-[560px] lg:h-[650px]"
+                    />
+
+                    {unmappedCount >
+                      0 && (
+                      <div className="mt-3 flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.018] px-3.5 py-2.5">
+                        <CircleAlert
+                          className="h-3.5 w-3.5 shrink-0 text-amber-200/45"
+                          strokeWidth={1.7}
                         />
-                      ),
-                    )}
-                  </div>
-                )}
-              </div>
-            </aside>
 
-            <div className="min-w-0 lg:sticky lg:top-6">
-              <div className="mb-4 flex items-end justify-between">
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-sky-300/60">
-                    Explore
+                        <p className="text-xs text-white/30">
+                          {
+                            unmappedCount
+                          }{' '}
+                          saved{' '}
+                          {unmappedCount ===
+                          1
+                            ? 'place still needs'
+                            : 'places still need'}{' '}
+                          a location.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <div className="mt-3 flex items-center justify-between px-1">
+                  <p className="text-xs text-white/25">
+                    {mappedCount}{' '}
+                    {mappedCount === 1
+                      ? 'place has'
+                      : 'places have'}{' '}
+                    coordinates.
                   </p>
 
-                  <h3 className="mt-1 text-lg font-semibold text-white">
-                    Journey map
-                  </h3>
+                  <p className="text-[10px] uppercase tracking-[0.15em] text-white/20">
+                    MapLibre
+                  </p>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-
-                  <span className="text-[10px] uppercase tracking-[0.16em] text-white/25">
-                    Interactive
-                  </span>
-                </div>
-              </div>
-
-              <MeridianMap
-                places={
-                  state.places
-                }
-                selectedPlaceId={
-                  selectedPlaceId
-                }
-                onSelectPlace={(
-                  placeId,
-                ) => {
-                  setSearch(
-                    '',
-                  );
-
-                  setCategoryFilter(
-                    'ALL',
-                  );
-
-                  setSelectedPlaceId(
-                    placeId,
-                  );
-                }}
-                heightClassName="h-[460px] sm:h-[520px] lg:h-[650px]"
-              />
-
-              <div className="mt-3 flex items-center justify-between px-1">
-                <p className="text-xs text-white/25">
-                  {mappedCount}{' '}
-                  {mappedCount === 1
-                    ? 'place has'
-                    : 'places have'}{' '}
-                  coordinates.
-                </p>
-
-                <p className="text-[10px] uppercase tracking-[0.15em] text-white/20">
-                  MapLibre
-                </p>
               </div>
             </div>
-          </div>
+          </>
         )}
       </section>
 

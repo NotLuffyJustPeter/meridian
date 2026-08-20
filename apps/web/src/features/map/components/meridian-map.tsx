@@ -1,8 +1,6 @@
 'use client';
 
-import type {
-  LucideIcon,
-} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import {
   Compass,
   Hotel,
@@ -21,12 +19,8 @@ import {
   useRef,
   useState,
 } from 'react';
-import type {
-  Root,
-} from 'react-dom/client';
-import {
-  createRoot,
-} from 'react-dom/client';
+import type { Root } from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
 
 import type {
   Place,
@@ -519,6 +513,66 @@ export function MeridianMap({
         null;
     };
   }, []);
+
+  /*
+   * Important for responsive layouts.
+   *
+   * MapLibre may initialize while the container is hidden
+   * by the mobile Places / Map switcher. ResizeObserver
+   * makes it recalculate its canvas as soon as the panel
+   * becomes visible again.
+   */
+  useEffect(() => {
+    if (
+      state !==
+      'ready'
+    ) {
+      return;
+    }
+
+    const container =
+      containerRef.current;
+
+    const map =
+      mapRef.current;
+
+    if (
+      !container ||
+      !map ||
+      typeof ResizeObserver ===
+        'undefined'
+    ) {
+      return;
+    }
+
+    const observer =
+      new ResizeObserver(
+        () => {
+          if (
+            container.clientWidth <=
+              0 ||
+            container.clientHeight <=
+              0
+          ) {
+            return;
+          }
+
+          window.requestAnimationFrame(
+            () => {
+              map.resize();
+            },
+          );
+        },
+      );
+
+    observer.observe(
+      container,
+    );
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [state]);
 
   useEffect(() => {
     if (
