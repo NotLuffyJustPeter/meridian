@@ -19,9 +19,6 @@ import {
   Utensils,
   X,
 } from 'lucide-react';
-
-import { MeridianMap } from '../../map/components/meridian-map';
-
 import type {
   ReactNode,
 } from 'react';
@@ -31,6 +28,7 @@ import {
   useState,
 } from 'react';
 
+import { MeridianMap } from '../../map/components/meridian-map';
 import type {
   CreatePlaceInput,
   Place,
@@ -181,7 +179,8 @@ function isRecord(
   unknown
 > {
   return (
-    typeof value === 'object' &&
+    typeof value ===
+      'object' &&
     value !== null
   );
 }
@@ -256,13 +255,17 @@ async function fetchPlacesState(
   try {
     const response =
       await fetch(
-        `/api/trips/${encodeURIComponent(tripId)}/places`,
+        `/api/trips/${encodeURIComponent(
+          tripId,
+        )}/places`,
         {
           method: 'GET',
+
           headers: {
             accept:
               'application/json',
           },
+
           cache:
             'no-store',
         },
@@ -537,10 +540,14 @@ function CategoryBadge({
 
 function PlaceCard({
   place,
+  selected,
+  onSelect,
   onEdit,
   onDelete,
 }: {
   place: Place;
+  selected: boolean;
+  onSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -558,10 +565,18 @@ function PlaceCard({
     meta.icon;
 
   return (
-    <article className="group relative overflow-hidden rounded-[1.65rem] border border-white/[0.08] bg-white/[0.028] transition duration-300 hover:-translate-y-0.5 hover:border-white/[0.15] hover:bg-white/[0.045]">
+    <article
+      onClick={onSelect}
+      className={[
+        'group relative cursor-pointer overflow-hidden rounded-[1.65rem] border transition duration-300 hover:-translate-y-0.5',
+        selected
+          ? 'border-sky-300/30 bg-sky-300/[0.055] shadow-[0_0_0_1px_rgba(125,211,252,0.06)]'
+          : 'border-white/[0.08] bg-white/[0.028] hover:border-white/[0.15] hover:bg-white/[0.045]',
+      ].join(' ')}
+    >
       <div className="pointer-events-none absolute -right-16 -top-20 h-40 w-40 rounded-full border border-white/[0.04] bg-white/[0.018]" />
 
-      <div className="p-5 sm:p-6">
+      <div className="p-5">
         <div className="relative flex items-start justify-between gap-4">
           <div className="min-w-0">
             <CategoryBadge
@@ -570,7 +585,7 @@ function PlaceCard({
               }
             />
 
-            <h3 className="mt-4 truncate text-lg font-semibold tracking-[-0.025em] text-white">
+            <h3 className="mt-4 truncate text-base font-semibold tracking-[-0.025em] text-white">
               {place.name}
             </h3>
 
@@ -579,7 +594,6 @@ function PlaceCard({
                 <MapPin
                   className="mt-0.5 h-4 w-4 shrink-0 text-white/25"
                   strokeWidth={1.6}
-                  aria-hidden="true"
                 />
 
                 <p className="line-clamp-2 text-sm leading-5 text-white/45">
@@ -594,9 +608,12 @@ function PlaceCard({
           <div className="flex shrink-0 gap-1.5 opacity-70 transition group-hover:opacity-100">
             <button
               type="button"
-              onClick={
-                onEdit
-              }
+              onClick={(
+                event,
+              ) => {
+                event.stopPropagation();
+                onEdit();
+              }}
               aria-label={`Edit ${place.name}`}
               title="Edit place"
               className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.025] text-white/45 transition hover:border-white/[0.14] hover:bg-white/[0.08] hover:text-white"
@@ -609,9 +626,12 @@ function PlaceCard({
 
             <button
               type="button"
-              onClick={
-                onDelete
-              }
+              onClick={(
+                event,
+              ) => {
+                event.stopPropagation();
+                onDelete();
+              }}
               aria-label={`Delete ${place.name}`}
               title="Delete place"
               className="flex h-9 w-9 items-center justify-center rounded-xl border border-rose-300/10 bg-rose-300/[0.025] text-rose-200/45 transition hover:border-rose-300/20 hover:bg-rose-300/[0.08] hover:text-rose-100"
@@ -632,7 +652,6 @@ function PlaceCard({
                 <MapPin
                   className="h-3 w-3"
                   strokeWidth={1.8}
-                  aria-hidden="true"
                 />
 
                 {
@@ -648,6 +667,11 @@ function PlaceCard({
                 }
                 target="_blank"
                 rel="noreferrer"
+                onClick={(
+                  event,
+                ) => {
+                  event.stopPropagation();
+                }}
                 className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.07] bg-black/10 px-3 py-1.5 text-[11px] text-sky-200/65 transition hover:border-sky-300/20 hover:bg-sky-300/[0.05] hover:text-sky-100"
               >
                 Website
@@ -655,7 +679,6 @@ function PlaceCard({
                 <ExternalLink
                   className="h-3.5 w-3.5"
                   strokeWidth={1.7}
-                  aria-hidden="true"
                 />
               </a>
             )}
@@ -673,12 +696,11 @@ function PlaceCard({
         )}
       </div>
 
-      <div className="relative flex items-center justify-between border-t border-white/[0.06] bg-black/[0.08] px-5 py-3.5 sm:px-6">
+      <div className="relative flex items-center justify-between border-t border-white/[0.06] bg-black/[0.08] px-5 py-3.5">
         <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.16em] text-white/25">
           <Icon
             className="h-3.5 w-3.5"
             strokeWidth={1.7}
-            aria-hidden="true"
           />
 
           Saved place
@@ -687,15 +709,12 @@ function PlaceCard({
         <span
           className={[
             'h-1.5 w-1.5 rounded-full',
-            coordinates
-              ? 'bg-emerald-300'
-              : 'bg-white/20',
+            selected
+              ? 'bg-sky-300 shadow-[0_0_10px_rgba(125,211,252,0.7)]'
+              : coordinates
+                ? 'bg-emerald-300'
+                : 'bg-white/20',
           ].join(' ')}
-          title={
-            coordinates
-              ? 'Ready for map'
-              : 'No coordinates'
-          }
         />
       </div>
     </article>
@@ -726,18 +745,7 @@ function LoadingState() {
         )}
       </div>
 
-      <div className="mt-6 h-28 animate-pulse rounded-[1.5rem] border border-white/[0.06] bg-white/[0.025]" />
-
-      <div className="mt-6 grid gap-4 xl:grid-cols-2">
-        {[0, 1, 2, 3].map(
-          (item) => (
-            <div
-              key={item}
-              className="h-60 animate-pulse rounded-[1.65rem] border border-white/[0.06] bg-white/[0.025]"
-            />
-          ),
-        )}
-      </div>
+      <div className="mt-6 h-[600px] animate-pulse rounded-[1.75rem] border border-white/[0.06] bg-white/[0.025]" />
     </div>
   );
 }
@@ -763,8 +771,7 @@ function EmptyPlaces({
       </p>
 
       <h3 className="relative mt-2 text-2xl font-semibold tracking-[-0.035em] text-white">
-        Build your travel
-        collection.
+        Build your travel collection.
       </h3>
 
       <p className="relative mx-auto mt-3 max-w-md text-sm leading-6 text-white/40">
@@ -793,7 +800,7 @@ function EmptyPlaces({
 
 function NoResults() {
   return (
-    <div className="mt-7 rounded-[1.65rem] border border-dashed border-white/10 bg-white/[0.015] px-6 py-12 text-center">
+    <div className="rounded-[1.35rem] border border-dashed border-white/10 bg-white/[0.015] px-6 py-10 text-center">
       <Search
         className="mx-auto h-5 w-5 text-white/25"
         strokeWidth={1.6}
@@ -816,7 +823,7 @@ function FieldLabel({
   children,
 }: {
   children:
-  ReactNode;
+    ReactNode;
 }) {
   return (
     <span className="text-xs font-medium text-white/60">
@@ -860,11 +867,6 @@ function PlaceDialog({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
-      aria-label={
-        isEditing
-          ? 'Edit place'
-          : 'Add place'
-      }
     >
       <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[28px] border border-white/10 bg-[#0c1118] shadow-[0_30px_120px_rgba(0,0,0,0.65)]">
         <div className="flex items-start justify-between border-b border-white/[0.07] px-6 py-5">
@@ -881,7 +883,7 @@ function PlaceDialog({
 
             <p className="mt-1 max-w-lg text-sm leading-6 text-white/35">
               {isEditing
-                ? 'Update the details of this place without changing the rest of your journey.'
+                ? 'Update this place without changing the rest of your journey.'
                 : 'Save somewhere worth visiting. Coordinates can be added now or later.'}
             </p>
           </div>
@@ -892,7 +894,6 @@ function PlaceDialog({
             disabled={
               submitting
             }
-            aria-label="Close"
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03] text-white/45 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-40"
           >
             <X
@@ -925,7 +926,7 @@ function PlaceDialog({
               }
               maxLength={160}
               placeholder="Duomo di Milano"
-              className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-sky-300/30 focus:bg-white/[0.05]"
+              className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-sky-300/30"
             />
           </label>
 
@@ -950,7 +951,7 @@ function PlaceDialog({
                         .value as PlaceCategory,
                   })
                 }
-                className="mt-2 w-full rounded-xl border border-white/[0.08] bg-[#111720] px-4 py-3 text-sm text-white outline-none transition focus:border-sky-300/30"
+                className="mt-2 w-full rounded-xl border border-white/[0.08] bg-[#111720] px-4 py-3 text-sm text-white outline-none focus:border-sky-300/30"
               >
                 {PLACE_CATEGORIES.map(
                   (
@@ -998,7 +999,7 @@ function PlaceDialog({
                 }
                 maxLength={500}
                 placeholder="https://..."
-                className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-sky-300/30 focus:bg-white/[0.05]"
+                className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none placeholder:text-white/20 focus:border-sky-300/30"
               />
             </label>
           </div>
@@ -1025,7 +1026,7 @@ function PlaceDialog({
               }
               maxLength={300}
               placeholder="Piazza del Duomo, Milano"
-              className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-sky-300/30 focus:bg-white/[0.05]"
+              className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none placeholder:text-white/20 focus:border-sky-300/30"
             />
           </label>
 
@@ -1041,67 +1042,53 @@ function PlaceDialog({
             </div>
 
             <div className="mt-2 grid gap-4 sm:grid-cols-2">
-              <label className="block">
-                <span className="sr-only">
-                  Latitude
-                </span>
+              <input
+                type="number"
+                step="any"
+                value={
+                  form.latitude
+                }
+                onChange={(
+                  event,
+                ) =>
+                  onChange({
+                    ...form,
+                    latitude:
+                      event
+                        .target
+                        .value,
+                  })
+                }
+                placeholder="Latitude · 45.4642"
+                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 font-mono text-sm text-white outline-none placeholder:font-sans placeholder:text-white/20 focus:border-sky-300/30"
+              />
 
-                <input
-                  type="number"
-                  step="any"
-                  value={
-                    form.latitude
-                  }
-                  onChange={(
-                    event,
-                  ) =>
-                    onChange({
-                      ...form,
-                      latitude:
-                        event
-                          .target
-                          .value,
-                    })
-                  }
-                  placeholder="Latitude · 45.4642"
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 font-mono text-sm text-white outline-none transition placeholder:font-sans placeholder:text-white/20 focus:border-sky-300/30 focus:bg-white/[0.05]"
-                />
-              </label>
-
-              <label className="block">
-                <span className="sr-only">
-                  Longitude
-                </span>
-
-                <input
-                  type="number"
-                  step="any"
-                  value={
-                    form.longitude
-                  }
-                  onChange={(
-                    event,
-                  ) =>
-                    onChange({
-                      ...form,
-                      longitude:
-                        event
-                          .target
-                          .value,
-                    })
-                  }
-                  placeholder="Longitude · 9.1916"
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 font-mono text-sm text-white outline-none transition placeholder:font-sans placeholder:text-white/20 focus:border-sky-300/30 focus:bg-white/[0.05]"
-                />
-              </label>
+              <input
+                type="number"
+                step="any"
+                value={
+                  form.longitude
+                }
+                onChange={(
+                  event,
+                ) =>
+                  onChange({
+                    ...form,
+                    longitude:
+                      event
+                        .target
+                        .value,
+                  })
+                }
+                placeholder="Longitude · 9.1916"
+                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 font-mono text-sm text-white outline-none placeholder:font-sans placeholder:text-white/20 focus:border-sky-300/30"
+              />
             </div>
 
             <p className="mt-2 text-xs leading-5 text-white/25">
               Latitude and longitude
               must be provided
-              together. Places with
-              coordinates will appear
-              on the map.
+              together.
             </p>
           </div>
 
@@ -1128,12 +1115,12 @@ function PlaceDialog({
               maxLength={2000}
               rows={4}
               placeholder="Reservations, best time to visit, reminders..."
-              className="mt-2 w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-white/20 focus:border-sky-300/30 focus:bg-white/[0.05]"
+              className="mt-2 w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-white/20 focus:border-sky-300/30"
             />
           </label>
 
           {error && (
-            <div className="rounded-xl border border-rose-300/10 bg-rose-300/[0.04] px-4 py-3 text-sm leading-6 text-rose-200/80">
+            <div className="rounded-xl border border-rose-300/10 bg-rose-300/[0.04] px-4 py-3 text-sm text-rose-200/80">
               {error}
             </div>
           )}
@@ -1153,9 +1140,7 @@ function PlaceDialog({
 
           <button
             type="button"
-            onClick={
-              onSubmit
-            }
+            onClick={onSubmit}
             disabled={
               submitting ||
               form.name
@@ -1163,15 +1148,8 @@ function PlaceDialog({
                 .length ===
                 0
             }
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {!submitting && (
-              <MapPin
-                className="h-4 w-4"
-                strokeWidth={1.8}
-              />
-            )}
-
             {submitting
               ? 'Saving...'
               : isEditing
@@ -1198,13 +1176,8 @@ function DeleteDialog({
   onConfirm: () => void;
 }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
-      role="alertdialog"
-      aria-modal="true"
-      aria-label="Delete place"
-    >
-      <div className="w-full max-w-md rounded-[26px] border border-white/10 bg-[#0c1118] p-6 shadow-[0_30px_120px_rgba(0,0,0,0.65)]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-[26px] border border-white/10 bg-[#0c1118] p-6">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-rose-300/10 bg-rose-300/[0.05] text-rose-200">
           <Trash2
             className="h-5 w-5"
@@ -1212,7 +1185,7 @@ function DeleteDialog({
           />
         </div>
 
-        <h3 className="mt-5 text-xl font-semibold tracking-[-0.03em] text-white">
+        <h3 className="mt-5 text-xl font-semibold text-white">
           Delete place?
         </h3>
 
@@ -1231,34 +1204,23 @@ function DeleteDialog({
         <div className="mt-6 flex justify-end gap-3">
           <button
             type="button"
-            onClick={
-              onCancel
-            }
+            onClick={onCancel}
             disabled={
               deleting
             }
-            className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-white/60 transition hover:bg-white/[0.05] hover:text-white disabled:opacity-40"
+            className="rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/60"
           >
             Cancel
           </button>
 
           <button
             type="button"
-            onClick={
-              onConfirm
-            }
+            onClick={onConfirm}
             disabled={
               deleting
             }
-            className="inline-flex items-center gap-2 rounded-xl border border-rose-300/15 bg-rose-300/[0.08] px-4 py-2.5 text-sm font-semibold text-rose-100 transition hover:bg-rose-300/[0.13] disabled:opacity-40"
+            className="rounded-xl border border-rose-300/15 bg-rose-300/[0.08] px-4 py-2.5 text-sm font-semibold text-rose-100"
           >
-            {!deleting && (
-              <Trash2
-                className="h-4 w-4"
-                strokeWidth={1.8}
-              />
-            )}
-
             {deleting
               ? 'Deleting...'
               : 'Delete'}
@@ -1294,6 +1256,14 @@ export function PlacesPanel({
   ] =
     useState<CategoryFilter>(
       'ALL',
+    );
+
+  const [
+    selectedPlaceId,
+    setSelectedPlaceId,
+  ] =
+    useState<string | null>(
+      null,
     );
 
   const [
@@ -1574,6 +1544,7 @@ export function PlacesPanel({
 
     const payload = {
       name,
+
       category:
         form.category,
 
@@ -1614,8 +1585,14 @@ export function PlacesPanel({
 
       const path =
         isEditing
-          ? `/api/trips/${encodeURIComponent(tripId)}/places/${encodeURIComponent(dialog.place.id)}`
-          : `/api/trips/${encodeURIComponent(tripId)}/places`;
+          ? `/api/trips/${encodeURIComponent(
+              tripId,
+            )}/places/${encodeURIComponent(
+              dialog.place.id,
+            )}`
+          : `/api/trips/${encodeURIComponent(
+              tripId,
+            )}/places`;
 
       const body:
         | CreatePlaceInput
@@ -1654,9 +1631,7 @@ export function PlacesPanel({
           null;
       }
 
-      if (
-        !response.ok
-      ) {
+      if (!response.ok) {
         setFormError(
           getErrorMessage(
             responsePayload,
@@ -1692,6 +1667,9 @@ export function PlacesPanel({
       return;
     }
 
+    const deletingPlaceId =
+      deleteTarget.id;
+
     setDeleting(
       true,
     );
@@ -1703,16 +1681,18 @@ export function PlacesPanel({
     try {
       const response =
         await fetch(
-          `/api/trips/${encodeURIComponent(tripId)}/places/${encodeURIComponent(deleteTarget.id)}`,
+          `/api/trips/${encodeURIComponent(
+            tripId,
+          )}/places/${encodeURIComponent(
+            deletingPlaceId,
+          )}`,
           {
             method:
               'DELETE',
           },
         );
 
-      if (
-        !response.ok
-      ) {
+      if (!response.ok) {
         let payload:
           unknown = null;
 
@@ -1731,6 +1711,15 @@ export function PlacesPanel({
         );
 
         return;
+      }
+
+      if (
+        selectedPlaceId ===
+        deletingPlaceId
+      ) {
+        setSelectedPlaceId(
+          null,
+        );
       }
 
       setDeleteTarget(
@@ -1768,7 +1757,7 @@ export function PlacesPanel({
           Couldn&apos;t load places
         </p>
 
-        <p className="mt-3 max-w-xl text-sm leading-6 text-slate-400">
+        <p className="mt-3 text-sm text-slate-400">
           {state.error}
         </p>
 
@@ -1785,7 +1774,7 @@ export function PlacesPanel({
 
             void reloadPlaces();
           }}
-          className="mt-6 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/[0.09]"
+          className="mt-6 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-2.5 text-sm text-white"
         >
           Try again
         </button>
@@ -1806,18 +1795,16 @@ export function PlacesPanel({
                 Places
               </p>
 
-              <span className="rounded-full border border-white/[0.07] bg-white/[0.035] px-2.5 py-1 text-[10px] font-medium text-white/40">
+              <span className="rounded-full border border-white/[0.07] bg-white/[0.035] px-2.5 py-1 text-[10px] text-white/40">
                 {totalPlaces}{' '}
-                {totalPlaces ===
-                1
+                {totalPlaces === 1
                   ? 'place'
                   : 'places'}
               </span>
             </div>
 
-            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-white sm:text-3xl">
-              Places worth the
-              detour.
+            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-white">
+              Places worth the detour.
             </h2>
 
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
@@ -1832,119 +1819,95 @@ export function PlacesPanel({
 
           <button
             type="button"
-            onClick={
-              openCreate
-            }
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+            onClick={openCreate}
+            className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
           >
             <Plus
               className="h-4 w-4"
-              strokeWidth={1.9}
             />
 
             Add place
           </button>
         </div>
 
-      {totalPlaces > 0 && (
-        <>
+        {totalPlaces > 0 && (
           <div className="mt-7 grid gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/30">
-                  Saved
-                </p>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/30">
+                Saved
+              </p>
 
-                <MapPin
-                  className="h-4 w-4 text-white/20"
-                  strokeWidth={1.6}
-                />
-              </div>
-
-              <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">
+              <p className="mt-3 text-2xl font-semibold text-white">
                 {totalPlaces}
               </p>
             </div>
 
             <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/30">
-                  Ready for map
-                </p>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/30">
+                Ready for map
+              </p>
 
-                <MapPin
-                  className="h-4 w-4 text-emerald-300/50"
-                  strokeWidth={1.6}
-                />
-              </div>
-
-              <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">
+              <p className="mt-3 text-2xl font-semibold text-white">
                 {mappedCount}
               </p>
             </div>
 
             <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/30">
-                  Categories
-                </p>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/30">
+                Categories
+              </p>
 
-                <Sparkles
-                  className="h-4 w-4 text-sky-300/40"
-                  strokeWidth={1.6}
-                />
-              </div>
-
-              <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">
+              <p className="mt-3 text-2xl font-semibold text-white">
                 {categoryCount}
               </p>
             </div>
           </div>
+        )}
 
-          <div className="mt-7">
-            <div className="mb-4 flex items-end justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300/60">
-                  Explore
-                </p>
+        {totalPlaces === 0 ? (
+          <EmptyPlaces
+            onAdd={openCreate}
+          />
+        ) : (
+          <div className="mt-7 grid items-start gap-6 lg:grid-cols-[minmax(320px,0.72fr)_minmax(0,1.28fr)]">
+            <aside className="min-w-0 overflow-hidden rounded-[1.65rem] border border-white/[0.07] bg-white/[0.018]">
+              <div className="border-b border-white/[0.06] px-5 py-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-sky-300/60">
+                      Collection
+                    </p>
 
-                <h3 className="mt-1 text-lg font-semibold tracking-[-0.025em] text-white">
-                  Journey map
-                </h3>
+                    <h3 className="mt-1 text-lg font-semibold text-white">
+                      Saved places
+                    </h3>
+                  </div>
+
+                  <span className="text-[10px] uppercase tracking-[0.16em] text-white/25">
+                    {visiblePlaces.length}{' '}
+                    shown
+                  </span>
+                </div>
               </div>
 
-              <span className="text-[10px] uppercase tracking-[0.16em] text-white/25">
-                Interactive
-              </span>
-            </div>
-
-            <MeridianMap />
-          </div>
-
-            <div className="mt-6 overflow-hidden rounded-[1.5rem] border border-white/[0.07] bg-white/[0.02]">
-              <div className="space-y-4 p-4 sm:p-5">
+              <div className="space-y-4 p-4">
                 <div className="relative">
                   <Search
-                    className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30"
-                    strokeWidth={1.7}
+                    className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30"
                   />
 
                   <input
                     type="search"
-                    value={
-                      search
-                    }
+                    value={search}
                     onChange={(
                       event,
                     ) =>
                       setSearch(
-                        event
-                          .target
-                          .value,
+                        event.target.value,
                       )
                     }
-                    placeholder="Search by name, address or notes..."
-                    className="w-full rounded-xl border border-white/[0.08] bg-black/10 py-3 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-sky-300/25 focus:bg-white/[0.035]"
+                    placeholder="Search places..."
+                    className="w-full rounded-xl border border-white/[0.08] bg-black/10 py-3 pl-10 pr-4 text-sm text-white outline-none placeholder:text-white/20"
                   />
                 </div>
 
@@ -1957,14 +1920,12 @@ export function PlacesPanel({
                       )
                     }
                     className={[
-                      'shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition',
+                      'shrink-0 rounded-full border px-3 py-1.5 text-xs transition',
                       categoryFilter ===
                       'ALL'
                         ? 'border-white/20 bg-white/[0.1] text-white'
-                        : 'border-white/[0.07] bg-white/[0.025] text-white/40 hover:bg-white/[0.06] hover:text-white/70',
-                    ].join(
-                      ' ',
-                    )}
+                        : 'border-white/[0.07] text-white/40',
+                    ].join(' ')}
                   >
                     All
                   </button>
@@ -1997,19 +1958,16 @@ export function PlacesPanel({
                             )
                           }
                           className={[
-                            'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition',
+                            'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition',
                             active
                               ? meta.badgeClassName
-                              : 'border-white/[0.07] bg-white/[0.025] text-white/40 hover:bg-white/[0.06] hover:text-white/70',
+                              : 'border-white/[0.07] text-white/40',
                           ].join(
                             ' ',
                           )}
                         >
                           <Icon
                             className="h-3.5 w-3.5"
-                            strokeWidth={
-                              1.7
-                            }
                           />
 
                           {
@@ -2021,86 +1979,128 @@ export function PlacesPanel({
                   )}
                 </div>
               </div>
-            </div>
-          </>
-        )}
 
-        {totalPlaces ===
-        0 ? (
-          <EmptyPlaces
-            onAdd={
-              openCreate
-            }
-          />
-        ) : visiblePlaces.length ===
-          0 ? (
-          <NoResults />
-        ) : (
-          <>
-            <div className="mb-4 mt-6 flex items-center justify-between gap-4">
-              <p className="text-xs text-white/35">
-                Showing{' '}
-                {
-                  visiblePlaces.length
-                }{' '}
-                of{' '}
-                {
-                  totalPlaces
+              <div className="border-t border-white/[0.06]">
+                {visiblePlaces.length ===
+                0 ? (
+                  <div className="p-4">
+                    <NoResults />
+                  </div>
+                ) : (
+                  <div className="max-h-[620px] space-y-3 overflow-y-auto p-4">
+                    {visiblePlaces.map(
+                      (place) => (
+                        <PlaceCard
+                          key={
+                            place.id
+                          }
+                          place={
+                            place
+                          }
+                          selected={
+                            selectedPlaceId ===
+                            place.id
+                          }
+                          onSelect={() => {
+                            setSelectedPlaceId(
+                              place.id,
+                            );
+                          }}
+                          onEdit={() =>
+                            openEdit(
+                              place,
+                            )
+                          }
+                          onDelete={() => {
+                            setDeleteError(
+                              null,
+                            );
+
+                            setDeleteTarget(
+                              place,
+                            );
+                          }}
+                        />
+                      ),
+                    )}
+                  </div>
+                )}
+              </div>
+            </aside>
+
+            <div className="min-w-0 lg:sticky lg:top-6">
+              <div className="mb-4 flex items-end justify-between">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-sky-300/60">
+                    Explore
+                  </p>
+
+                  <h3 className="mt-1 text-lg font-semibold text-white">
+                    Journey map
+                  </h3>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+
+                  <span className="text-[10px] uppercase tracking-[0.16em] text-white/25">
+                    Interactive
+                  </span>
+                </div>
+              </div>
+
+              <MeridianMap
+                places={
+                  state.places
                 }
-              </p>
+                selectedPlaceId={
+                  selectedPlaceId
+                }
+                onSelectPlace={(
+                  placeId,
+                ) => {
+                  setSearch(
+                    '',
+                  );
 
-              <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/20">
-                Saved collection
-              </p>
+                  setCategoryFilter(
+                    'ALL',
+                  );
+
+                  setSelectedPlaceId(
+                    placeId,
+                  );
+                }}
+                heightClassName="h-[460px] sm:h-[520px] lg:h-[650px]"
+              />
+
+              <div className="mt-3 flex items-center justify-between px-1">
+                <p className="text-xs text-white/25">
+                  {mappedCount}{' '}
+                  {mappedCount === 1
+                    ? 'place has'
+                    : 'places have'}{' '}
+                  coordinates.
+                </p>
+
+                <p className="text-[10px] uppercase tracking-[0.15em] text-white/20">
+                  MapLibre
+                </p>
+              </div>
             </div>
-
-            <div className="grid gap-4 xl:grid-cols-2">
-              {visiblePlaces.map(
-                (place) => (
-                  <PlaceCard
-                    key={
-                      place.id
-                    }
-                    place={
-                      place
-                    }
-                    onEdit={() =>
-                      openEdit(
-                        place,
-                      )
-                    }
-                    onDelete={() => {
-                      setDeleteError(
-                        null,
-                      );
-
-                      setDeleteTarget(
-                        place,
-                      );
-                    }}
-                  />
-                ),
-              )}
-            </div>
-          </>
+          </div>
         )}
       </section>
 
       {dialog && (
         <PlaceDialog
-          dialog={
-            dialog
-          }
+          dialog={dialog}
           form={form}
-          error={
-            formError
-          }
+          error={formError}
           submitting={
             submitting
           }
-          onChange={
-            setForm
-          }
+          onChange={setForm}
           onClose={
             closeDialog
           }
@@ -2122,9 +2122,7 @@ export function PlacesPanel({
             deleteError
           }
           onCancel={() => {
-            if (
-              deleting
-            ) {
+            if (deleting) {
               return;
             }
 

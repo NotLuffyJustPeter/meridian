@@ -2,18 +2,30 @@
 
 import {
   Compass,
-  Map,
+  Map as MapIcon,
 } from 'lucide-react';
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
 
+import type {
+  Place,
+  PlaceCategory,
+} from '../../places/types/place.types';
+
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 interface MeridianMapProps {
+  places?: Place[];
+  selectedPlaceId?: string | null;
+  onSelectPlace?: (
+    placeId: string,
+  ) => void;
   className?: string;
+  heightClassName?: string;
 }
 
 type MapState =
@@ -21,11 +33,254 @@ type MapState =
   | 'ready'
   | 'error';
 
+type MappedPlace =
+  Place & {
+    latitude: number;
+    longitude: number;
+  };
+
+type MarkerEntry = {
+  marker: import('maplibre-gl').Marker;
+  popup: import('maplibre-gl').Popup;
+  element: HTMLButtonElement;
+  category: PlaceCategory;
+};
+
 const MAP_STYLE =
   'https://tiles.openfreemap.org/styles/liberty';
 
+const MARKER_BASE_CLASS =
+  'flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-white/90 p-0 text-white shadow-[0_8px_24px_rgba(0,0,0,0.38)] transition-[box-shadow,border-color] duration-200';
+
+function getMarkerColor(
+  category: PlaceCategory,
+): string {
+  switch (category) {
+    case 'LANDMARK':
+      return '#8b5cf6';
+
+    case 'FOOD':
+      return '#f59e0b';
+
+    case 'LODGING':
+      return '#10b981';
+
+    case 'SHOPPING':
+      return '#ec4899';
+
+    case 'TRANSPORT':
+      return '#0ea5e9';
+
+    case 'ENTERTAINMENT':
+      return '#d946ef';
+
+    case 'NATURE':
+      return '#14b8a6';
+
+    case 'OTHER':
+      return '#64748b';
+  }
+}
+
+function getMarkerSymbol(
+  category: PlaceCategory,
+): string {
+  switch (category) {
+    case 'LANDMARK':
+      return 'L';
+
+    case 'FOOD':
+      return 'F';
+
+    case 'LODGING':
+      return 'H';
+
+    case 'SHOPPING':
+      return 'S';
+
+    case 'TRANSPORT':
+      return 'T';
+
+    case 'ENTERTAINMENT':
+      return 'E';
+
+    case 'NATURE':
+      return 'N';
+
+    case 'OTHER':
+      return '•';
+  }
+}
+
+function getCategoryLabel(
+  category: PlaceCategory,
+): string {
+  switch (category) {
+    case 'LANDMARK':
+      return 'Landmark';
+
+    case 'FOOD':
+      return 'Food';
+
+    case 'LODGING':
+      return 'Lodging';
+
+    case 'SHOPPING':
+      return 'Shopping';
+
+    case 'TRANSPORT':
+      return 'Transport';
+
+    case 'ENTERTAINMENT':
+      return 'Entertainment';
+
+    case 'NATURE':
+      return 'Nature';
+
+    case 'OTHER':
+      return 'Other';
+  }
+}
+
+function setMarkerSelected(
+  element: HTMLButtonElement,
+  selected: boolean,
+): void {
+  if (selected) {
+    element.style.boxShadow =
+      '0 0 0 5px rgba(255,255,255,0.20), 0 10px 30px rgba(0,0,0,0.45)';
+
+    element.style.borderColor =
+      'rgba(255,255,255,1)';
+
+    element.style.zIndex =
+      '5';
+
+    return;
+  }
+
+  element.style.boxShadow =
+    '0 8px 24px rgba(0,0,0,0.38)';
+
+  element.style.borderColor =
+    'rgba(255,255,255,0.90)';
+
+  element.style.zIndex =
+    '1';
+}
+
+function createPopupContent(
+  place: MappedPlace,
+): HTMLDivElement {
+  const root =
+    document.createElement(
+      'div',
+    );
+
+  root.className =
+    'min-w-[210px]';
+
+  const eyebrow =
+    document.createElement(
+      'p',
+    );
+
+  eyebrow.className =
+    'text-[9px] font-semibold uppercase tracking-[0.18em] text-sky-300/70';
+
+  eyebrow.textContent =
+    getCategoryLabel(
+      place.category,
+    );
+
+  const title =
+    document.createElement(
+      'p',
+    );
+
+  title.className =
+    'mt-1.5 pr-6 text-sm font-semibold text-white';
+
+  title.textContent =
+    place.name;
+
+  root.append(
+    eyebrow,
+    title,
+  );
+
+  if (place.address) {
+    const address =
+      document.createElement(
+        'p',
+      );
+
+    address.className =
+      'mt-2 text-xs leading-5 text-slate-400';
+
+    address.textContent =
+      place.address;
+
+    root.appendChild(
+      address,
+    );
+  }
+
+  const coordinates =
+    document.createElement(
+      'p',
+    );
+
+  coordinates.className =
+    'mt-3 font-mono text-[10px] text-slate-500';
+
+  coordinates.textContent =
+    `${place.latitude.toFixed(
+      4,
+    )}, ${place.longitude.toFixed(
+      4,
+    )}`;
+
+  root.appendChild(
+    coordinates,
+  );
+
+  if (place.website) {
+    const link =
+      document.createElement(
+        'a',
+      );
+
+    link.href =
+      place.website;
+
+    link.target =
+      '_blank';
+
+    link.rel =
+      'noreferrer';
+
+    link.className =
+      'mt-3 inline-flex text-xs font-medium text-sky-300 transition hover:text-sky-200';
+
+    link.textContent =
+      'Open website ↗';
+
+    root.appendChild(
+      link,
+    );
+  }
+
+  return root;
+}
+
 export function MeridianMap({
+  places = [],
+  selectedPlaceId = null,
+  onSelectPlace,
   className = '',
+  heightClassName =
+    'h-[420px] sm:h-[480px] lg:h-[520px]',
 }: MeridianMapProps) {
   const containerRef =
     useRef<HTMLDivElement | null>(
@@ -37,6 +292,20 @@ export function MeridianMap({
       import('maplibre-gl').Map | null
     >(null);
 
+  const markerRefs =
+    useRef<
+      Map<string, MarkerEntry>
+    >(
+      new Map(),
+    );
+
+  const onSelectPlaceRef =
+    useRef<
+      MeridianMapProps['onSelectPlace']
+    >(
+      onSelectPlace,
+    );
+
   const [
     state,
     setState,
@@ -45,7 +314,30 @@ export function MeridianMap({
       'loading',
     );
 
+  const mappedPlaces =
+    useMemo<MappedPlace[]>(
+      () =>
+        places.filter(
+          (
+            place,
+          ): place is MappedPlace =>
+            place.latitude !==
+              null &&
+            place.longitude !==
+              null,
+        ),
+      [places],
+    );
+
   useEffect(() => {
+    onSelectPlaceRef.current =
+      onSelectPlace;
+  }, [onSelectPlace]);
+
+  useEffect(() => {
+    const markerStore =
+      markerRefs.current;
+
     const container =
       containerRef.current;
 
@@ -82,11 +374,11 @@ export function MeridianMap({
               MAP_STYLE,
 
             center: [
-              0,
-              20,
+              -102,
+              23,
             ],
 
-            zoom: 1.6,
+            zoom: 4,
 
             minZoom: 1,
 
@@ -124,22 +416,24 @@ export function MeridianMap({
         );
 
         map.once(
-        'style.load',
-        () => {
+          'style.load',
+          () => {
             if (
-            !cancelled
+              cancelled
             ) {
+              return;
+            }
+
             setState(
-                'ready',
+              'ready',
             );
 
             window.requestAnimationFrame(
-                () => {
+              () => {
                 map.resize();
-                },
+              },
             );
-            }
-        },
+          },
         );
 
         map.on(
@@ -175,11 +469,313 @@ export function MeridianMap({
       cancelled =
         true;
 
+      markerStore.forEach(
+        (entry) => {
+          entry.popup.remove();
+          entry.marker.remove();
+        },
+      );
+
+      markerStore.clear();
+
       mapRef.current?.remove();
+
       mapRef.current =
         null;
     };
   }, []);
+
+  useEffect(() => {
+    if (
+      state !==
+      'ready'
+    ) {
+      return;
+    }
+
+    let cancelled =
+      false;
+
+    async function renderMarkers() {
+      const maplibregl =
+        await import(
+          'maplibre-gl'
+        );
+
+      const currentMap =
+        mapRef.current;
+
+      if (
+        cancelled ||
+        !currentMap
+      ) {
+        return;
+      }
+
+      markerRefs.current.forEach(
+        (entry) => {
+          entry.popup.remove();
+          entry.marker.remove();
+        },
+      );
+
+      markerRefs.current.clear();
+
+      if (
+        mappedPlaces.length ===
+        0
+      ) {
+        return;
+      }
+
+      const bounds =
+        new maplibregl.LngLatBounds();
+
+      mappedPlaces.forEach(
+        (place) => {
+          const element =
+            document.createElement(
+              'button',
+            );
+
+          element.type =
+            'button';
+
+          element.className =
+            MARKER_BASE_CLASS;
+
+          element.style.backgroundColor =
+            getMarkerColor(
+              place.category,
+            );
+
+          setMarkerSelected(
+            element,
+            false,
+          );
+
+          element.setAttribute(
+            'aria-label',
+            `View ${place.name}`,
+          );
+
+          element.title =
+            place.name;
+
+          const symbol =
+            document.createElement(
+              'span',
+            );
+
+          symbol.className =
+            'pointer-events-none text-[11px] font-bold leading-none text-white';
+
+          symbol.textContent =
+            getMarkerSymbol(
+              place.category,
+            );
+
+          element.appendChild(
+            symbol,
+          );
+
+          const popup =
+            new maplibregl.Popup({
+              offset: 22,
+
+              closeButton:
+                true,
+
+              closeOnClick:
+                false,
+
+              className:
+                'meridian-map-popup',
+            }).setDOMContent(
+              createPopupContent(
+                place,
+              ),
+            );
+
+          const marker =
+            new maplibregl.Marker({
+              element,
+
+              anchor:
+                'center',
+            })
+              .setLngLat([
+                place.longitude,
+                place.latitude,
+              ])
+              .setPopup(
+                popup,
+              )
+              .addTo(
+                currentMap,
+              );
+
+          element.addEventListener(
+            'click',
+            () => {
+              onSelectPlaceRef.current?.(
+                place.id,
+              );
+            },
+          );
+
+          markerRefs.current.set(
+            place.id,
+            {
+              marker,
+              popup,
+              element,
+              category:
+                place.category,
+            },
+          );
+
+          bounds.extend([
+            place.longitude,
+            place.latitude,
+          ]);
+        },
+      );
+
+      if (
+        mappedPlaces.length ===
+        1
+      ) {
+        const place =
+          mappedPlaces[0];
+
+        currentMap.easeTo({
+          center: [
+            place.longitude,
+            place.latitude,
+          ],
+
+          zoom: 13,
+
+          duration: 900,
+        });
+
+        return;
+      }
+
+      currentMap.fitBounds(
+        bounds,
+        {
+          padding: {
+            top: 80,
+            right: 80,
+            bottom: 80,
+            left: 80,
+          },
+
+          maxZoom: 14,
+
+          duration: 1000,
+        },
+      );
+    }
+
+    void renderMarkers();
+
+    return () => {
+      cancelled =
+        true;
+    };
+  }, [
+    mappedPlaces,
+    state,
+  ]);
+
+  useEffect(() => {
+    if (
+      state !==
+      'ready'
+    ) {
+      return;
+    }
+
+    markerRefs.current.forEach(
+      (
+        entry,
+        placeId,
+      ) => {
+        setMarkerSelected(
+          entry.element,
+          placeId ===
+            selectedPlaceId,
+        );
+
+        if (
+          placeId !==
+            selectedPlaceId &&
+          entry.popup.isOpen()
+        ) {
+          entry.popup.remove();
+        }
+      },
+    );
+
+    if (
+      !selectedPlaceId
+    ) {
+      return;
+    }
+
+    const currentMap =
+      mapRef.current;
+
+    if (!currentMap) {
+      return;
+    }
+
+    const place =
+      mappedPlaces.find(
+        (item) =>
+          item.id ===
+          selectedPlaceId,
+      );
+
+    if (!place) {
+      return;
+    }
+
+    currentMap.flyTo({
+      center: [
+        place.longitude,
+        place.latitude,
+      ],
+
+      zoom: Math.max(
+        currentMap.getZoom(),
+        14,
+      ),
+
+      duration: 900,
+
+      essential: true,
+    });
+
+    const entry =
+      markerRefs.current.get(
+        selectedPlaceId,
+      );
+
+    if (
+      entry &&
+      !entry.popup.isOpen()
+    ) {
+      entry.marker.togglePopup();
+    }
+  }, [
+    mappedPlaces,
+    selectedPlaceId,
+    state,
+  ]);
 
   return (
     <section
@@ -192,7 +788,10 @@ export function MeridianMap({
         ref={
           containerRef
         }
-        className="h-[420px] w-full sm:h-[480px] lg:h-[520px]"
+        className={[
+          'w-full',
+          heightClassName,
+        ].join(' ')}
       />
 
       {state ===
@@ -225,7 +824,7 @@ export function MeridianMap({
         <div className="absolute inset-0 flex items-center justify-center bg-[#081018] p-6">
           <div className="max-w-sm text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-rose-300/10 bg-rose-300/[0.05] text-rose-200">
-              <Map
+              <MapIcon
                 className="h-5 w-5"
                 strokeWidth={
                   1.6
@@ -263,6 +862,23 @@ export function MeridianMap({
           </div>
         </div>
       </div>
+
+      {state ===
+        'ready' &&
+        mappedPlaces.length >
+          0 && (
+          <div className="pointer-events-none absolute bottom-4 right-4 z-10">
+            <div className="rounded-xl border border-white/10 bg-[#081018]/85 px-3 py-2 text-[10px] font-medium uppercase tracking-[0.15em] text-white/45 shadow-xl backdrop-blur-md">
+              {
+                mappedPlaces.length
+              }{' '}
+              {mappedPlaces.length ===
+              1
+                ? 'mapped place'
+                : 'mapped places'}
+            </div>
+          </div>
+        )}
     </section>
   );
 }
