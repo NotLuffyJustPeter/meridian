@@ -27,10 +27,12 @@ import {
   useState,
 } from 'react';
 
+import { GeocodingPreviewMap } from '../../geocoding/components/geocoding-preview-map';
 import type {
   GeocodingResult,
   GeocodingSearchResponse,
 } from '../../geocoding/types/geocoding.types';
+
 import { MeridianMap } from '../../map/components/meridian-map';
 import type {
   CreatePlaceInput,
@@ -375,6 +377,45 @@ function placeToForm(
 
     sourcePlaceId:
       place.sourcePlaceId,
+  };
+}
+
+function getPreviewCoordinates(
+  form: PlaceFormState,
+): {
+  latitude: number;
+  longitude: number;
+} | null {
+  const latitude =
+    Number(
+      form.latitude,
+    );
+
+  const longitude =
+    Number(
+      form.longitude,
+    );
+
+  if (
+    !form.latitude.trim() ||
+    !form.longitude.trim() ||
+    !Number.isFinite(
+      latitude,
+    ) ||
+    !Number.isFinite(
+      longitude,
+    ) ||
+    latitude < -90 ||
+    latitude > 90 ||
+    longitude < -180 ||
+    longitude > 180
+  ) {
+    return null;
+  }
+
+  return {
+    latitude,
+    longitude,
   };
 }
 
@@ -1267,6 +1308,11 @@ function PlaceDialog({
   const selectedSourceId =
     form.sourcePlaceId;
 
+  const previewCoordinates =
+    getPreviewCoordinates(
+      form,
+    );
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
@@ -1581,6 +1627,21 @@ function PlaceDialog({
                   </p>
                 </div>
               </div>
+            )}
+
+            {previewCoordinates && (
+              <GeocodingPreviewMap
+                latitude={
+                  previewCoordinates.latitude
+                }
+                longitude={
+                  previewCoordinates.longitude
+                }
+                label={
+                  form.name.trim() ||
+                  'Selected location'
+                }
+              />
             )}
 
           <label className="block">
