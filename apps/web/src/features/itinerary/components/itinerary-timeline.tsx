@@ -9,8 +9,10 @@ import {
 import type {
   Activity,
   ActivityCategory,
+  CreateActivityInput,
   Itinerary,
   TripDay,
+  UpdateActivityInput,
 } from '../types/itinerary.types';
 
 interface ItineraryTimelineProps {
@@ -29,6 +31,38 @@ type TimelineState =
       status: 'error';
       message: string;
     };
+
+type ActivityDialogState =
+  | {
+      mode: 'create';
+      day: TripDay;
+    }
+  | {
+      mode: 'edit';
+      day: TripDay;
+      activity: Activity;
+    }
+  | null;
+
+interface ActivityFormState {
+  title: string;
+  description: string;
+  category: ActivityCategory;
+  startTime: string;
+  endTime: string;
+  location: string;
+  notes: string;
+}
+
+const EMPTY_FORM: ActivityFormState = {
+  title: '',
+  description: '',
+  category: 'OTHER',
+  startTime: '',
+  endTime: '',
+  location: '',
+  notes: '',
+};
 
 const CATEGORY_META: Record<
   ActivityCategory,
@@ -74,24 +108,32 @@ const CATEGORY_META: Record<
   },
 };
 
+const ACTIVITY_CATEGORIES =
+  Object.keys(
+    CATEGORY_META,
+  ) as ActivityCategory[];
+
+function isRecord(
+  value: unknown,
+): value is Record<
+  string,
+  unknown
+> {
+  return (
+    typeof value === 'object' &&
+    value !== null
+  );
+}
+
 function getErrorMessage(
   payload: unknown,
 ): string {
-  if (
-    typeof payload !== 'object' ||
-    payload === null
-  ) {
-    return 'Unable to load itinerary.';
+  if (!isRecord(payload)) {
+    return 'Something went wrong.';
   }
 
-  const record =
-    payload as Record<
-      string,
-      unknown
-    >;
-
   const message =
-    record['message'];
+    payload['message'];
 
   if (
     typeof message === 'string'
@@ -120,32 +162,23 @@ function getErrorMessage(
     }
   }
 
-  return 'Unable to load itinerary.';
+  return 'Something went wrong.';
 }
 
 function isItinerary(
   value: unknown,
 ): value is Itinerary {
-  if (
-    typeof value !== 'object' ||
-    value === null
-  ) {
+  if (!isRecord(value)) {
     return false;
   }
 
-  const record =
-    value as Record<
-      string,
-      unknown
-    >;
-
   return (
-    typeof record['tripId'] ===
+    typeof value['tripId'] ===
       'string' &&
-    typeof record['timezone'] ===
+    typeof value['timezone'] ===
       'string' &&
     Array.isArray(
-      record['days'],
+      value['days'],
     )
   );
 }
@@ -256,6 +289,43 @@ function getActivityTime(
   return 'Flexible';
 }
 
+function activityToForm(
+  activity: Activity,
+): ActivityFormState {
+  return {
+    title:
+      activity.title,
+    description:
+      activity.description ??
+      '',
+    category:
+      activity.category,
+    startTime:
+      activity.startTime ??
+      '',
+    endTime:
+      activity.endTime ??
+      '',
+    location:
+      activity.location ??
+      '',
+    notes:
+      activity.notes ??
+      '',
+  };
+}
+
+function optionalText(
+  value: string,
+): string | undefined {
+  const trimmed =
+    value.trim();
+
+  return trimmed.length > 0
+    ? trimmed
+    : undefined;
+}
+
 function DayButton({
   day,
   active,
@@ -318,9 +388,13 @@ function DayButton({
 function ActivityCard({
   activity,
   isLast,
+  onEdit,
+  onDelete,
 }: {
   activity: Activity;
   isLast: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   const category =
     CATEGORY_META[
@@ -345,7 +419,7 @@ function ActivityCard({
         <div className="relative z-10 mt-1.5 h-3 w-3 rounded-full border border-white/30 bg-[#111318] shadow-[0_0_0_5px_rgba(255,255,255,0.035)]" />
       </div>
 
-      <article className="mb-7 overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.035] p-4 transition hover:border-white/[0.14] hover:bg-white/[0.05] md:p-5">
+      <article className="group mb-7 overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.035] p-4 transition hover:border-white/[0.14] hover:bg-white/[0.05] md:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h4 className="text-base font-semibold tracking-[-0.01em] text-white md:text-lg">
@@ -359,14 +433,32 @@ function ActivityCard({
             )}
           </div>
 
-          <span
-            className={[
-              'rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.13em]',
-              category.badgeClassName,
-            ].join(' ')}
-          >
-            {category.label}
-          </span>
+          <div className="flex items-center gap-2">
+            <span
+              className={[
+                'rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.13em]',
+                category.badgeClassName,
+              ].join(' ')}
+            >
+              {category.label}
+            </span>
+
+            <button
+              type="button"
+              onClick={onEdit}
+              className="rounded-lg border border-white/[0.08] bg-white/[0.035] px-2.5 py-1.5 text-[11px] font-medium text-white/55 transition hover:bg-white/[0.08] hover:text-white"
+            >
+              Edit
+            </button>
+
+            <button
+              type="button"
+              onClick={onDelete}
+              className="rounded-lg border border-rose-300/10 bg-rose-300/[0.035] px-2.5 py-1.5 text-[11px] font-medium text-rose-200/60 transition hover:bg-rose-300/[0.08] hover:text-rose-100"
+            >
+              Delete
+            </button>
+          </div>
         </div>
 
         {activity.description && (
@@ -391,12 +483,20 @@ function ActivityCard({
   );
 }
 
-function EmptyDay() {
+function EmptyDay({
+  onAdd,
+}: {
+  onAdd: () => void;
+}) {
   return (
     <div className="rounded-3xl border border-dashed border-white/10 bg-white/[0.02] px-6 py-14 text-center">
-      <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-lg text-white/50">
+      <button
+        type="button"
+        onClick={onAdd}
+        className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-lg text-white/50 transition hover:bg-white/[0.08] hover:text-white"
+      >
         +
-      </div>
+      </button>
 
       <h4 className="mt-4 text-base font-medium text-white/80">
         Nothing planned yet
@@ -404,9 +504,17 @@ function EmptyDay() {
 
       <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-white/40">
         This day is still open.
-        Activities you add later
-        will appear here in order.
+        Add the first activity
+        whenever you&apos;re ready.
       </p>
+
+      <button
+        type="button"
+        onClick={onAdd}
+        className="mt-5 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/[0.1]"
+      >
+        Add activity
+      </button>
     </div>
   );
 }
@@ -432,6 +540,376 @@ function LoadingState() {
   );
 }
 
+function ActivityDialog({
+  dialog,
+  form,
+  error,
+  submitting,
+  onChange,
+  onClose,
+  onSubmit,
+}: {
+  dialog: NonNullable<ActivityDialogState>;
+  form: ActivityFormState;
+  error: string | null;
+  submitting: boolean;
+  onChange: (
+    next: ActivityFormState,
+  ) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}) {
+  const isEditing =
+    dialog.mode === 'edit';
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label={
+        isEditing
+          ? 'Edit activity'
+          : 'Add activity'
+      }
+    >
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[28px] border border-white/10 bg-[#0c1118] shadow-[0_30px_120px_rgba(0,0,0,0.65)]">
+        <div className="flex items-start justify-between border-b border-white/[0.07] px-6 py-5">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-300/70">
+              Day{' '}
+              {
+                dialog.day
+                  .dayNumber
+              }
+            </p>
+
+            <h3 className="mt-1.5 text-xl font-semibold tracking-[-0.03em] text-white">
+              {isEditing
+                ? 'Edit activity'
+                : 'Add activity'}
+            </h3>
+
+            <p className="mt-1 text-sm text-white/35">
+              {formatDayLong(
+                dialog.day.date,
+              )}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03] text-lg text-white/45 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-40"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="space-y-5 p-6">
+          <label className="block">
+            <span className="text-xs font-medium text-white/60">
+              Title
+            </span>
+
+            <input
+              value={form.title}
+              onChange={(
+                event,
+              ) =>
+                onChange({
+                  ...form,
+                  title:
+                    event.target
+                      .value,
+                })
+              }
+              maxLength={160}
+              placeholder="Visit Meiji Shrine"
+              className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-sky-300/30 focus:bg-white/[0.05]"
+            />
+          </label>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-xs font-medium text-white/60">
+                Category
+              </span>
+
+              <select
+                value={
+                  form.category
+                }
+                onChange={(
+                  event,
+                ) =>
+                  onChange({
+                    ...form,
+                    category:
+                      event.target
+                        .value as ActivityCategory,
+                  })
+                }
+                className="mt-2 w-full rounded-xl border border-white/[0.08] bg-[#111720] px-4 py-3 text-sm text-white outline-none transition focus:border-sky-300/30"
+              >
+                {ACTIVITY_CATEGORIES.map(
+                  (
+                    category,
+                  ) => (
+                    <option
+                      key={
+                        category
+                      }
+                      value={
+                        category
+                      }
+                    >
+                      {
+                        CATEGORY_META[
+                          category
+                        ].label
+                      }
+                    </option>
+                  ),
+                )}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-xs font-medium text-white/60">
+                Location
+              </span>
+
+              <input
+                value={
+                  form.location
+                }
+                onChange={(
+                  event,
+                ) =>
+                  onChange({
+                    ...form,
+                    location:
+                      event.target
+                        .value,
+                  })
+                }
+                maxLength={200}
+                placeholder="Shibuya, Tokyo"
+                className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-sky-300/30 focus:bg-white/[0.05]"
+              />
+            </label>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-xs font-medium text-white/60">
+                Start time
+              </span>
+
+              <input
+                type="time"
+                value={
+                  form.startTime
+                }
+                onChange={(
+                  event,
+                ) =>
+                  onChange({
+                    ...form,
+                    startTime:
+                      event.target
+                        .value,
+                  })
+                }
+                className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition focus:border-sky-300/30 focus:bg-white/[0.05]"
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-xs font-medium text-white/60">
+                End time
+              </span>
+
+              <input
+                type="time"
+                value={
+                  form.endTime
+                }
+                onChange={(
+                  event,
+                ) =>
+                  onChange({
+                    ...form,
+                    endTime:
+                      event.target
+                        .value,
+                  })
+                }
+                className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition focus:border-sky-300/30 focus:bg-white/[0.05]"
+              />
+            </label>
+          </div>
+
+          <label className="block">
+            <span className="text-xs font-medium text-white/60">
+              Description
+            </span>
+
+            <textarea
+              value={
+                form.description
+              }
+              onChange={(
+                event,
+              ) =>
+                onChange({
+                  ...form,
+                  description:
+                    event.target
+                      .value,
+                })
+              }
+              maxLength={1000}
+              rows={3}
+              placeholder="Optional details about this activity..."
+              className="mt-2 w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-white/20 focus:border-sky-300/30 focus:bg-white/[0.05]"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-xs font-medium text-white/60">
+              Notes
+            </span>
+
+            <textarea
+              value={
+                form.notes
+              }
+              onChange={(
+                event,
+              ) =>
+                onChange({
+                  ...form,
+                  notes:
+                    event.target
+                      .value,
+                })
+              }
+              maxLength={2000}
+              rows={3}
+              placeholder="Tickets, reservation details, reminders..."
+              className="mt-2 w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-white/20 focus:border-sky-300/30 focus:bg-white/[0.05]"
+            />
+          </label>
+
+          {error && (
+            <div className="rounded-xl border border-rose-300/10 bg-rose-300/[0.04] px-4 py-3 text-sm text-rose-200/80">
+              {error}
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col-reverse gap-3 border-t border-white/[0.07] px-6 py-5 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-white/60 transition hover:bg-white/[0.05] hover:text-white disabled:opacity-40"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={
+              submitting ||
+              form.title.trim()
+                .length === 0
+            }
+            className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {submitting
+              ? 'Saving...'
+              : isEditing
+                ? 'Save changes'
+                : 'Add activity'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeleteDialog({
+  activity,
+  deleting,
+  error,
+  onCancel,
+  onConfirm,
+}: {
+  activity: Activity;
+  deleting: boolean;
+  error: string | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      role="alertdialog"
+      aria-modal="true"
+      aria-label="Delete activity"
+    >
+      <div className="w-full max-w-md rounded-[26px] border border-white/10 bg-[#0c1118] p-6 shadow-[0_30px_120px_rgba(0,0,0,0.65)]">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-rose-300/10 bg-rose-300/[0.05] text-rose-200">
+          !
+        </div>
+
+        <h3 className="mt-5 text-xl font-semibold tracking-[-0.03em] text-white">
+          Delete activity?
+        </h3>
+
+        <p className="mt-2 text-sm leading-6 text-white/45">
+          “{activity.title}”
+          will be permanently
+          removed from this day.
+        </p>
+
+        {error && (
+          <div className="mt-4 rounded-xl border border-rose-300/10 bg-rose-300/[0.04] px-4 py-3 text-sm text-rose-200/80">
+            {error}
+          </div>
+        )}
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={deleting}
+            className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-white/60 transition hover:bg-white/[0.05] hover:text-white disabled:opacity-40"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={deleting}
+            className="rounded-xl border border-rose-300/15 bg-rose-300/[0.08] px-4 py-2.5 text-sm font-semibold text-rose-100 transition hover:bg-rose-300/[0.13] disabled:opacity-40"
+          >
+            {deleting
+              ? 'Deleting...'
+              : 'Delete'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ItineraryTimeline({
   tripId,
 }: ItineraryTimelineProps) {
@@ -450,6 +928,70 @@ export function ItineraryTimeline({
     useState<string | null>(
       null,
     );
+
+  const [
+    activityDialog,
+    setActivityDialog,
+  ] =
+    useState<ActivityDialogState>(
+      null,
+    );
+
+  const [
+    form,
+    setForm,
+  ] =
+    useState<ActivityFormState>(
+      EMPTY_FORM,
+    );
+
+  const [
+    formError,
+    setFormError,
+  ] =
+    useState<string | null>(
+      null,
+    );
+
+  const [
+    submitting,
+    setSubmitting,
+  ] =
+    useState(false);
+
+  const [
+    deleteTarget,
+    setDeleteTarget,
+  ] =
+    useState<{
+      day: TripDay;
+      activity: Activity;
+    } | null>(null);
+
+  const [
+    deleteError,
+    setDeleteError,
+  ] =
+    useState<string | null>(
+      null,
+    );
+
+  const [
+    deleting,
+    setDeleting,
+  ] =
+    useState(false);
+
+  async function reloadItinerary() {
+    const nextState =
+      await fetchItineraryState(
+        tripId,
+      );
+
+    setState(nextState);
+
+    return nextState;
+  }
 
   useEffect(() => {
     let cancelled =
@@ -497,6 +1039,53 @@ export function ItineraryTimeline({
       state,
     ]);
 
+  const orderedActivities =
+    useMemo(() => {
+      if (!selectedDay) {
+        return [];
+      }
+
+      return [
+        ...selectedDay.activities,
+      ].sort(
+        (a, b) => {
+          if (
+            a.startTime &&
+            b.startTime
+          ) {
+            const byTime =
+              a.startTime.localeCompare(
+                b.startTime,
+              );
+
+            if (
+              byTime !== 0
+            ) {
+              return byTime;
+            }
+
+            return (
+              a.position -
+              b.position
+            );
+          }
+
+          if (a.startTime) {
+            return -1;
+          }
+
+          if (b.startTime) {
+            return 1;
+          }
+
+          return (
+            a.position -
+            b.position
+          );
+        },
+      );
+    }, [selectedDay]);
+
   const totalActivities =
     useMemo(() => {
       if (
@@ -516,6 +1105,221 @@ export function ItineraryTimeline({
         0,
       );
     }, [state]);
+
+  function openCreate(
+    day: TripDay,
+  ) {
+    setActivityDialog({
+      mode: 'create',
+      day,
+    });
+
+    setForm(
+      EMPTY_FORM,
+    );
+
+    setFormError(null);
+  }
+
+  function openEdit(
+    day: TripDay,
+    activity: Activity,
+  ) {
+    setActivityDialog({
+      mode: 'edit',
+      day,
+      activity,
+    });
+
+    setForm(
+      activityToForm(
+        activity,
+      ),
+    );
+
+    setFormError(null);
+  }
+
+  function closeActivityDialog() {
+    if (submitting) {
+      return;
+    }
+
+    setActivityDialog(null);
+    setFormError(null);
+  }
+
+  async function submitActivity() {
+    if (!activityDialog) {
+      return;
+    }
+
+    const title =
+      form.title.trim();
+
+    if (!title) {
+      setFormError(
+        'Title is required.',
+      );
+      return;
+    }
+
+    if (
+      form.startTime &&
+      form.endTime &&
+      form.endTime <
+        form.startTime
+    ) {
+      setFormError(
+        'End time cannot be earlier than start time.',
+      );
+      return;
+    }
+
+    setSubmitting(true);
+    setFormError(null);
+
+    const basePayload = {
+      title,
+      category:
+        form.category,
+      description:
+        optionalText(
+          form.description,
+        ),
+      startTime:
+        form.startTime ||
+        undefined,
+      endTime:
+        form.endTime ||
+        undefined,
+      location:
+        optionalText(
+          form.location,
+        ),
+      notes:
+        optionalText(
+          form.notes,
+        ),
+    };
+
+    try {
+      const url =
+        activityDialog.mode ===
+        'create'
+          ? `/api/trips/${encodeURIComponent(tripId)}/itinerary/days/${encodeURIComponent(activityDialog.day.id)}/activities`
+          : `/api/trips/${encodeURIComponent(tripId)}/itinerary/days/${encodeURIComponent(activityDialog.day.id)}/activities/${encodeURIComponent(activityDialog.activity.id)}`;
+
+      const method =
+        activityDialog.mode ===
+        'create'
+          ? 'POST'
+          : 'PATCH';
+
+      const payload:
+        | CreateActivityInput
+        | UpdateActivityInput =
+        basePayload;
+
+      const response =
+        await fetch(url, {
+          method,
+          headers: {
+            'content-type':
+              'application/json',
+          },
+          body: JSON.stringify(
+            payload,
+          ),
+        });
+
+      const responsePayload =
+        (await response.json()) as unknown;
+
+      if (!response.ok) {
+        setFormError(
+          getErrorMessage(
+            responsePayload,
+          ),
+        );
+        return;
+      }
+
+      const currentDayId =
+        activityDialog.day.id;
+
+      await reloadItinerary();
+
+      setSelectedDayId(
+        currentDayId,
+      );
+
+      setActivityDialog(null);
+      setFormError(null);
+    } catch {
+      setFormError(
+        'Activity service is currently unavailable.',
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) {
+      return;
+    }
+
+    setDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const response =
+        await fetch(
+          `/api/trips/${encodeURIComponent(tripId)}/itinerary/days/${encodeURIComponent(deleteTarget.day.id)}/activities/${encodeURIComponent(deleteTarget.activity.id)}`,
+          {
+            method: 'DELETE',
+          },
+        );
+
+      if (!response.ok) {
+        let payload:
+          unknown = null;
+
+        try {
+          payload =
+            (await response.json()) as unknown;
+        } catch {
+          payload = null;
+        }
+
+        setDeleteError(
+          getErrorMessage(
+            payload,
+          ),
+        );
+        return;
+      }
+
+      const currentDayId =
+        deleteTarget.day.id;
+
+      await reloadItinerary();
+
+      setSelectedDayId(
+        currentDayId,
+      );
+
+      setDeleteTarget(null);
+      setDeleteError(null);
+    } catch {
+      setDeleteError(
+        'Activity service is currently unavailable.',
+      );
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   function retry() {
     setState({
@@ -572,9 +1376,7 @@ export function ItineraryTimeline({
     itinerary.days.length ===
     0
   ) {
-    return (
-      <EmptyDay />
-    );
+    return null;
   }
 
   if (!selectedDay) {
@@ -582,125 +1384,203 @@ export function ItineraryTimeline({
   }
 
   return (
-    <section className="space-y-6">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/35">
-            Journey timeline
+    <>
+      <section className="space-y-6">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/35">
+              Journey timeline
+            </div>
+
+            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-white md:text-3xl">
+              Your itinerary
+            </h2>
+
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/45">
+              Build the journey
+              day by day and keep
+              every activity in one
+              clear timeline.
+            </p>
           </div>
 
-          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-white md:text-3xl">
-            Your itinerary
-          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-white/40">
+              {itinerary.days.length}{' '}
+              days
+            </span>
 
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-white/45">
-            Explore each day of
-            the journey and keep
-            every activity in one
-            clear timeline.
-          </p>
+            <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-white/40">
+              {totalActivities}{' '}
+              activities
+            </span>
+
+            <button
+              type="button"
+              onClick={() =>
+                openCreate(
+                  selectedDay,
+                )
+              }
+              className="rounded-xl bg-white px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200"
+            >
+              + Add activity
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-white/40">
-          <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5">
-            {itinerary.days.length}{' '}
-            days
-          </span>
-
-          <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5">
-            {totalActivities}{' '}
-            activities
-          </span>
+        <div className="-mx-1 overflow-x-auto px-1 pb-2">
+          <div className="flex min-w-max gap-2.5">
+            {itinerary.days.map(
+              (day) => (
+                <DayButton
+                  key={day.id}
+                  day={day}
+                  active={
+                    selectedDay.id ===
+                    day.id
+                  }
+                  onSelect={() =>
+                    setSelectedDayId(
+                      day.id,
+                    )
+                  }
+                />
+              ),
+            )}
+          </div>
         </div>
-      </div>
 
-      <div className="-mx-1 overflow-x-auto px-1 pb-2">
-        <div className="flex min-w-max gap-2.5">
-          {itinerary.days.map(
-            (day) => (
-              <DayButton
-                key={day.id}
-                day={day}
-                active={
-                  selectedDay.id ===
-                  day.id
-                }
-                onSelect={() =>
-                  setSelectedDayId(
-                    day.id,
+        <div className="overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#0d0f13]/80 shadow-[0_30px_80px_rgba(0,0,0,0.2)]">
+          <div className="border-b border-white/[0.07] bg-white/[0.025] px-5 py-5 md:px-7">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/35">
+                  Day{' '}
+                  {
+                    selectedDay.dayNumber
+                  }
+                </div>
+
+                <h3 className="mt-1.5 text-xl font-semibold tracking-[-0.02em] text-white md:text-2xl">
+                  {formatDayLong(
+                    selectedDay.date,
+                  )}
+                </h3>
+              </div>
+
+              <div className="text-sm text-white/40">
+                {
+                  selectedDay
+                    .activities
+                    .length
+                }{' '}
+                {selectedDay.activities
+                  .length === 1
+                  ? 'planned activity'
+                  : 'planned activities'}
+              </div>
+            </div>
+          </div>
+
+          <div className="px-4 py-7 md:px-7 md:py-8">
+            {orderedActivities.length >
+            0 ? (
+              <div>
+                {orderedActivities.map(
+                  (
+                    activity,
+                    index,
+                  ) => (
+                    <ActivityCard
+                      key={
+                        activity.id
+                      }
+                      activity={
+                        activity
+                      }
+                      isLast={
+                        index ===
+                        orderedActivities
+                          .length -
+                          1
+                      }
+                      onEdit={() =>
+                        openEdit(
+                          selectedDay,
+                          activity,
+                        )
+                      }
+                      onDelete={() => {
+                        setDeleteTarget({
+                          day:
+                            selectedDay,
+                          activity,
+                        });
+
+                        setDeleteError(
+                          null,
+                        );
+                      }}
+                    />
+                  ),
+                )}
+              </div>
+            ) : (
+              <EmptyDay
+                onAdd={() =>
+                  openCreate(
+                    selectedDay,
                   )
                 }
               />
-            ),
-          )}
-        </div>
-      </div>
-
-      <div className="overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#0d0f13]/80 shadow-[0_30px_80px_rgba(0,0,0,0.2)]">
-        <div className="border-b border-white/[0.07] bg-white/[0.025] px-5 py-5 md:px-7">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/35">
-                Day{' '}
-                {
-                  selectedDay.dayNumber
-                }
-              </div>
-
-              <h3 className="mt-1.5 text-xl font-semibold tracking-[-0.02em] text-white md:text-2xl">
-                {formatDayLong(
-                  selectedDay.date,
-                )}
-              </h3>
-            </div>
-
-            <div className="text-sm text-white/40">
-              {
-                selectedDay
-                  .activities
-                  .length
-              }{' '}
-              {selectedDay.activities
-                .length === 1
-                ? 'planned activity'
-                : 'planned activities'}
-            </div>
+            )}
           </div>
         </div>
+      </section>
 
-        <div className="px-4 py-7 md:px-7 md:py-8">
-          {selectedDay
-            .activities.length >
-          0 ? (
-            <div>
-              {selectedDay.activities.map(
-                (
-                  activity,
-                  index,
-                ) => (
-                  <ActivityCard
-                    key={
-                      activity.id
-                    }
-                    activity={
-                      activity
-                    }
-                    isLast={
-                      index ===
-                      selectedDay
-                        .activities
-                        .length -
-                        1
-                    }
-                  />
-                ),
-              )}
-            </div>
-          ) : (
-            <EmptyDay />
-          )}
-        </div>
-      </div>
-    </section>
+      {activityDialog && (
+        <ActivityDialog
+          dialog={
+            activityDialog
+          }
+          form={form}
+          error={formError}
+          submitting={
+            submitting
+          }
+          onChange={setForm}
+          onClose={
+            closeActivityDialog
+          }
+          onSubmit={() => {
+            void submitActivity();
+          }}
+        />
+      )}
+
+      {deleteTarget && (
+        <DeleteDialog
+          activity={
+            deleteTarget.activity
+          }
+          deleting={deleting}
+          error={deleteError}
+          onCancel={() => {
+            if (!deleting) {
+              setDeleteTarget(
+                null,
+              );
+              setDeleteError(
+                null,
+              );
+            }
+          }}
+          onConfirm={() => {
+            void confirmDelete();
+          }}
+        />
+      )}
+    </>
   );
 }
