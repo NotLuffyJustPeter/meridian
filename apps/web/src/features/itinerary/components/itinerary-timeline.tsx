@@ -11,6 +11,7 @@ import type {
   ActivityCategory,
   CreateActivityInput,
   Itinerary,
+  ReorderActivitiesInput,
   TripDay,
   UpdateActivityInput,
 } from '../types/itinerary.types';
@@ -326,6 +327,119 @@ function optionalText(
     : undefined;
 }
 
+function compareByPosition(
+  a: Activity,
+  b: Activity,
+): number {
+  if (
+    a.position !== b.position
+  ) {
+    return (
+      a.position -
+      b.position
+    );
+  }
+
+  return a.createdAt.localeCompare(
+    b.createdAt,
+  );
+}
+
+function compareChronologically(
+  a: Activity,
+  b: Activity,
+): number {
+  if (
+    a.startTime &&
+    b.startTime
+  ) {
+    const byStartTime =
+      a.startTime.localeCompare(
+        b.startTime,
+      );
+
+    if (
+      byStartTime !== 0
+    ) {
+      return byStartTime;
+    }
+
+    if (
+      a.endTime &&
+      b.endTime
+    ) {
+      const byEndTime =
+        a.endTime.localeCompare(
+          b.endTime,
+        );
+
+      if (
+        byEndTime !== 0
+      ) {
+        return byEndTime;
+      }
+    }
+
+    return compareByPosition(
+      a,
+      b,
+    );
+  }
+
+  if (a.startTime) {
+    return -1;
+  }
+
+  if (b.startTime) {
+    return 1;
+  }
+
+  if (
+    a.endTime &&
+    b.endTime
+  ) {
+    const byEndTime =
+      a.endTime.localeCompare(
+        b.endTime,
+      );
+
+    if (
+      byEndTime !== 0
+    ) {
+      return byEndTime;
+    }
+  }
+
+  if (a.endTime) {
+    return -1;
+  }
+
+  if (b.endTime) {
+    return 1;
+  }
+
+  return compareByPosition(
+    a,
+    b,
+  );
+}
+
+function arraysEqual(
+  a: string[],
+  b: string[],
+): boolean {
+  return (
+    a.length === b.length &&
+    a.every(
+      (
+        value,
+        index,
+      ) =>
+        value === b[index],
+    )
+  );
+}
+
 function DayButton({
   day,
   active,
@@ -385,14 +499,55 @@ function DayButton({
   );
 }
 
+function ReorderButton({
+  direction,
+  disabled,
+  onClick,
+}: {
+  direction: 'up' | 'down';
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={
+        direction === 'up'
+          ? 'Move activity up'
+          : 'Move activity down'
+      }
+      title={
+        direction === 'up'
+          ? 'Move up'
+          : 'Move down'
+      }
+      className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.025] text-xs text-white/45 transition hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-20"
+    >
+      {direction === 'up'
+        ? '↑'
+        : '↓'}
+    </button>
+  );
+}
+
 function ActivityCard({
   activity,
+  isFirst,
   isLast,
+  reordering,
+  onMoveUp,
+  onMoveDown,
   onEdit,
   onDelete,
 }: {
   activity: Activity;
+  isFirst: boolean;
   isLast: boolean;
+  reordering: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -433,7 +588,7 @@ function ActivityCard({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <span
               className={[
                 'rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.13em]',
@@ -443,10 +598,35 @@ function ActivityCard({
               {category.label}
             </span>
 
+            <div className="flex items-center gap-1">
+              <ReorderButton
+                direction="up"
+                disabled={
+                  isFirst ||
+                  reordering
+                }
+                onClick={
+                  onMoveUp
+                }
+              />
+
+              <ReorderButton
+                direction="down"
+                disabled={
+                  isLast ||
+                  reordering
+                }
+                onClick={
+                  onMoveDown
+                }
+              />
+            </div>
+
             <button
               type="button"
               onClick={onEdit}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.035] px-2.5 py-1.5 text-[11px] font-medium text-white/55 transition hover:bg-white/[0.08] hover:text-white"
+              disabled={reordering}
+              className="rounded-lg border border-white/[0.08] bg-white/[0.035] px-2.5 py-1.5 text-[11px] font-medium text-white/55 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-40"
             >
               Edit
             </button>
@@ -454,7 +634,8 @@ function ActivityCard({
             <button
               type="button"
               onClick={onDelete}
-              className="rounded-lg border border-rose-300/10 bg-rose-300/[0.035] px-2.5 py-1.5 text-[11px] font-medium text-rose-200/60 transition hover:bg-rose-300/[0.08] hover:text-rose-100"
+              disabled={reordering}
+              className="rounded-lg border border-rose-300/10 bg-rose-300/[0.035] px-2.5 py-1.5 text-[11px] font-medium text-rose-200/60 transition hover:bg-rose-300/[0.08] hover:text-rose-100 disabled:opacity-40"
             >
               Delete
             </button>
@@ -982,6 +1163,20 @@ export function ItineraryTimeline({
   ] =
     useState(false);
 
+  const [
+    reordering,
+    setReordering,
+  ] =
+    useState(false);
+
+  const [
+    reorderError,
+    setReorderError,
+  ] =
+    useState<string | null>(
+      null,
+    );
+
   async function reloadItinerary() {
     const nextState =
       await fetchItineraryState(
@@ -991,6 +1186,142 @@ export function ItineraryTimeline({
     setState(nextState);
 
     return nextState;
+  }
+
+  async function persistActivityOrder(
+    dayId: string,
+    activityIds: string[],
+  ): Promise<string | null> {
+    if (
+      activityIds.length < 2
+    ) {
+      return null;
+    }
+
+    const payload:
+      ReorderActivitiesInput = {
+        activityIds,
+      };
+
+    try {
+      const response =
+        await fetch(
+          `/api/trips/${encodeURIComponent(tripId)}/itinerary/days/${encodeURIComponent(dayId)}/activities/reorder`,
+          {
+            method: 'PATCH',
+            headers: {
+              'content-type':
+                'application/json',
+            },
+            body: JSON.stringify(
+              payload,
+            ),
+          },
+        );
+
+      let responsePayload:
+        unknown = null;
+
+      try {
+        responsePayload =
+          (await response.json()) as unknown;
+      } catch {
+        responsePayload =
+          null;
+      }
+
+      if (!response.ok) {
+        return getErrorMessage(
+          responsePayload,
+        );
+      }
+
+      return null;
+    } catch {
+      return 'Unable to reorder activities right now.';
+    }
+  }
+
+  async function sortDayChronologically(
+    dayId: string,
+  ): Promise<string | null> {
+    const freshState =
+      await fetchItineraryState(
+        tripId,
+      );
+
+    if (
+      freshState.status !==
+      'success'
+    ) {
+      setState(freshState);
+
+      return freshState.status ===
+        'error'
+        ? freshState.message
+        : 'Unable to refresh itinerary.';
+    }
+
+    const day =
+      freshState.itinerary.days.find(
+        (item) =>
+          item.id === dayId,
+      );
+
+    if (!day) {
+      setState(freshState);
+
+      return 'Trip day could not be found.';
+    }
+
+    const currentOrder =
+      [...day.activities]
+        .sort(
+          compareByPosition,
+        )
+        .map(
+          (activity) =>
+            activity.id,
+        );
+
+    const chronologicalOrder =
+      [...day.activities]
+        .sort(
+          compareChronologically,
+        )
+        .map(
+          (activity) =>
+            activity.id,
+        );
+
+    if (
+      chronologicalOrder.length <
+        2 ||
+      arraysEqual(
+        currentOrder,
+        chronologicalOrder,
+      )
+    ) {
+      setState(freshState);
+
+      return null;
+    }
+
+    const reorderResult =
+      await persistActivityOrder(
+        dayId,
+        chronologicalOrder,
+      );
+
+    if (reorderResult) {
+      setState(freshState);
+
+      return reorderResult;
+    }
+
+    await reloadItinerary();
+
+    return null;
   }
 
   useEffect(() => {
@@ -1048,41 +1379,7 @@ export function ItineraryTimeline({
       return [
         ...selectedDay.activities,
       ].sort(
-        (a, b) => {
-          if (
-            a.startTime &&
-            b.startTime
-          ) {
-            const byTime =
-              a.startTime.localeCompare(
-                b.startTime,
-              );
-
-            if (
-              byTime !== 0
-            ) {
-              return byTime;
-            }
-
-            return (
-              a.position -
-              b.position
-            );
-          }
-
-          if (a.startTime) {
-            return -1;
-          }
-
-          if (b.startTime) {
-            return 1;
-          }
-
-          return (
-            a.position -
-            b.position
-          );
-        },
+        compareByPosition,
       );
     }, [selectedDay]);
 
@@ -1178,6 +1475,7 @@ export function ItineraryTimeline({
 
     setSubmitting(true);
     setFormError(null);
+    setReorderError(null);
 
     const basePayload = {
       title,
@@ -1242,19 +1540,32 @@ export function ItineraryTimeline({
             responsePayload,
           ),
         );
+
         return;
       }
 
       const currentDayId =
         activityDialog.day.id;
 
-      await reloadItinerary();
+      const sortError =
+        await sortDayChronologically(
+          currentDayId,
+        );
+
+      if (sortError) {
+        setReorderError(
+          `Activity saved, but automatic chronological ordering failed: ${sortError}`,
+        );
+      }
 
       setSelectedDayId(
         currentDayId,
       );
 
-      setActivityDialog(null);
+      setActivityDialog(
+        null,
+      );
+
       setFormError(null);
     } catch {
       setFormError(
@@ -1298,6 +1609,7 @@ export function ItineraryTimeline({
             payload,
           ),
         );
+
         return;
       }
 
@@ -1318,6 +1630,159 @@ export function ItineraryTimeline({
       );
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function moveActivity(
+    activityId: string,
+    direction:
+      | 'up'
+      | 'down',
+  ) {
+    if (
+      !selectedDay ||
+      reordering
+    ) {
+      return;
+    }
+
+    const currentOrder =
+      [...orderedActivities];
+
+    const currentIndex =
+      currentOrder.findIndex(
+        (activity) =>
+          activity.id ===
+          activityId,
+      );
+
+    if (currentIndex < 0) {
+      return;
+    }
+
+    const targetIndex =
+      direction === 'up'
+        ? currentIndex - 1
+        : currentIndex + 1;
+
+    if (
+      targetIndex < 0 ||
+      targetIndex >=
+        currentOrder.length
+    ) {
+      return;
+    }
+
+    const currentActivity =
+      currentOrder[currentIndex];
+
+    const targetActivity =
+      currentOrder[targetIndex];
+
+    if (
+      !currentActivity ||
+      !targetActivity
+    ) {
+      return;
+    }
+
+    currentOrder[
+      currentIndex
+    ] = targetActivity;
+
+    currentOrder[
+      targetIndex
+    ] = currentActivity;
+
+    setReordering(true);
+    setReorderError(null);
+
+    try {
+      const error =
+        await persistActivityOrder(
+          selectedDay.id,
+          currentOrder.map(
+            (activity) =>
+              activity.id,
+          ),
+        );
+
+      if (error) {
+        setReorderError(
+          error,
+        );
+
+        return;
+      }
+
+      await reloadItinerary();
+
+      setSelectedDayId(
+        selectedDay.id,
+      );
+    } finally {
+      setReordering(false);
+    }
+  }
+
+  async function handleSortByTime() {
+    if (
+      !selectedDay ||
+      reordering
+    ) {
+      return;
+    }
+
+    setReordering(true);
+    setReorderError(null);
+
+    try {
+      const chronologicalOrder =
+        [...orderedActivities]
+          .sort(
+            compareChronologically,
+          )
+          .map(
+            (activity) =>
+              activity.id,
+          );
+
+      const currentOrder =
+        orderedActivities.map(
+          (activity) =>
+            activity.id,
+        );
+
+      if (
+        arraysEqual(
+          chronologicalOrder,
+          currentOrder,
+        )
+      ) {
+        return;
+      }
+
+      const error =
+        await persistActivityOrder(
+          selectedDay.id,
+          chronologicalOrder,
+        );
+
+      if (error) {
+        setReorderError(
+          error,
+        );
+
+        return;
+      }
+
+      await reloadItinerary();
+
+      setSelectedDayId(
+        selectedDay.id,
+      );
+    } finally {
+      setReordering(false);
     }
   }
 
@@ -1422,7 +1887,8 @@ export function ItineraryTimeline({
                   selectedDay,
                 )
               }
-              className="rounded-xl bg-white px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200"
+              disabled={reordering}
+              className="rounded-xl bg-white px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
             >
               + Add activity
             </button>
@@ -1440,11 +1906,19 @@ export function ItineraryTimeline({
                     selectedDay.id ===
                     day.id
                   }
-                  onSelect={() =>
-                    setSelectedDayId(
-                      day.id,
-                    )
-                  }
+                  onSelect={() => {
+                    if (
+                      !reordering
+                    ) {
+                      setSelectedDayId(
+                        day.id,
+                      );
+
+                      setReorderError(
+                        null,
+                      );
+                    }
+                  }}
                 />
               ),
             )}
@@ -1453,7 +1927,7 @@ export function ItineraryTimeline({
 
         <div className="overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#0d0f13]/80 shadow-[0_30px_80px_rgba(0,0,0,0.2)]">
           <div className="border-b border-white/[0.07] bg-white/[0.025] px-5 py-5 md:px-7">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/35">
                   Day{' '}
@@ -1469,18 +1943,44 @@ export function ItineraryTimeline({
                 </h3>
               </div>
 
-              <div className="text-sm text-white/40">
-                {
-                  selectedDay
-                    .activities
-                    .length
-                }{' '}
-                {selectedDay.activities
-                  .length === 1
-                  ? 'planned activity'
-                  : 'planned activities'}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-white/40">
+                  {
+                    selectedDay
+                      .activities
+                      .length
+                  }{' '}
+                  {selectedDay.activities
+                    .length === 1
+                    ? 'planned activity'
+                    : 'planned activities'}
+                </span>
+
+                {orderedActivities.length >
+                  1 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleSortByTime();
+                    }}
+                    disabled={
+                      reordering
+                    }
+                    className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-white/50 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-wait disabled:opacity-40"
+                  >
+                    {reordering
+                      ? 'Ordering...'
+                      : 'Sort by time'}
+                  </button>
+                )}
               </div>
             </div>
+
+            {reorderError && (
+              <div className="mt-4 rounded-xl border border-rose-300/10 bg-rose-300/[0.04] px-4 py-3 text-sm text-rose-200/80">
+                {reorderError}
+              </div>
+            )}
           </div>
 
           <div className="px-4 py-7 md:px-7 md:py-8">
@@ -1499,12 +1999,30 @@ export function ItineraryTimeline({
                       activity={
                         activity
                       }
+                      isFirst={
+                        index === 0
+                      }
                       isLast={
                         index ===
                         orderedActivities
                           .length -
                           1
                       }
+                      reordering={
+                        reordering
+                      }
+                      onMoveUp={() => {
+                        void moveActivity(
+                          activity.id,
+                          'up',
+                        );
+                      }}
+                      onMoveDown={() => {
+                        void moveActivity(
+                          activity.id,
+                          'down',
+                        );
+                      }}
                       onEdit={() =>
                         openEdit(
                           selectedDay,
@@ -1571,6 +2089,7 @@ export function ItineraryTimeline({
               setDeleteTarget(
                 null,
               );
+
               setDeleteError(
                 null,
               );
