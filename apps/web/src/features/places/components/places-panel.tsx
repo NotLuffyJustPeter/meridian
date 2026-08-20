@@ -1,12 +1,12 @@
 'use client';
 
-import type {
-  LucideIcon,
-} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import {
+  Check,
   ExternalLink,
   Hotel,
   Landmark,
+  LoaderCircle,
   MapPin,
   Pencil,
   Plus,
@@ -19,9 +19,7 @@ import {
   Utensils,
   X,
 } from 'lucide-react';
-import type {
-  ReactNode,
-} from 'react';
+import type { ReactNode } from 'react';
 import {
   useEffect,
   useMemo,
@@ -29,6 +27,10 @@ import {
   useState,
 } from 'react';
 
+import type {
+  GeocodingResult,
+  GeocodingSearchResponse,
+} from '../../geocoding/types/geocoding.types';
 import { MeridianMap } from '../../map/components/meridian-map';
 import type {
   CreatePlaceInput,
@@ -76,6 +78,8 @@ interface PlaceFormState {
   longitude: string;
   website: string;
   notes: string;
+  sourceProvider: string | null;
+  sourcePlaceId: string | null;
 }
 
 type CategoryFilter =
@@ -97,6 +101,8 @@ const EMPTY_FORM: PlaceFormState = {
   longitude: '',
   website: '',
   notes: '',
+  sourceProvider: null,
+  sourcePlaceId: null,
 };
 
 const CATEGORY_META: Record<
@@ -363,6 +369,12 @@ function placeToForm(
     notes:
       place.notes ??
       '',
+
+    sourceProvider:
+      place.sourceProvider,
+
+    sourcePlaceId:
+      place.sourcePlaceId,
   };
 }
 
@@ -506,6 +518,162 @@ function formatCoordinates(
   )}`;
 }
 
+function inferPlaceCategory(
+  result: GeocodingResult,
+): PlaceCategory {
+  const category =
+    result.category
+      ?.toLocaleLowerCase() ??
+    '';
+
+  const type =
+    result.type
+      ?.toLocaleLowerCase() ??
+    '';
+
+  const combined =
+    `${category} ${type}`;
+
+  if (
+    combined.includes(
+      'restaurant',
+    ) ||
+    combined.includes(
+      'cafe',
+    ) ||
+    combined.includes(
+      'bar',
+    ) ||
+    combined.includes(
+      'fast_food',
+    ) ||
+    combined.includes(
+      'food',
+    )
+  ) {
+    return 'FOOD';
+  }
+
+  if (
+    combined.includes(
+      'hotel',
+    ) ||
+    combined.includes(
+      'hostel',
+    ) ||
+    combined.includes(
+      'motel',
+    ) ||
+    combined.includes(
+      'guest_house',
+    ) ||
+    combined.includes(
+      'accommodation',
+    )
+  ) {
+    return 'LODGING';
+  }
+
+  if (
+    combined.includes(
+      'shop',
+    ) ||
+    combined.includes(
+      'mall',
+    ) ||
+    combined.includes(
+      'marketplace',
+    ) ||
+    combined.includes(
+      'supermarket',
+    )
+  ) {
+    return 'SHOPPING';
+  }
+
+  if (
+    combined.includes(
+      'station',
+    ) ||
+    combined.includes(
+      'airport',
+    ) ||
+    combined.includes(
+      'bus_stop',
+    ) ||
+    combined.includes(
+      'transport',
+    ) ||
+    combined.includes(
+      'railway',
+    )
+  ) {
+    return 'TRANSPORT';
+  }
+
+  if (
+    combined.includes(
+      'cinema',
+    ) ||
+    combined.includes(
+      'theatre',
+    ) ||
+    combined.includes(
+      'nightclub',
+    ) ||
+    combined.includes(
+      'entertainment',
+    )
+  ) {
+    return 'ENTERTAINMENT';
+  }
+
+  if (
+    combined.includes(
+      'park',
+    ) ||
+    combined.includes(
+      'garden',
+    ) ||
+    combined.includes(
+      'nature',
+    ) ||
+    combined.includes(
+      'beach',
+    ) ||
+    combined.includes(
+      'peak',
+    )
+  ) {
+    return 'NATURE';
+  }
+
+  if (
+    combined.includes(
+      'museum',
+    ) ||
+    combined.includes(
+      'monument',
+    ) ||
+    combined.includes(
+      'attraction',
+    ) ||
+    combined.includes(
+      'place_of_worship',
+    ) ||
+    combined.includes(
+      'historic',
+    ) ||
+    combined.includes(
+      'tourism',
+    )
+  ) {
+    return 'LANDMARK';
+  }
+
+  return 'OTHER';
+}
+
 function CategoryBadge({
   category,
 }: {
@@ -550,7 +718,8 @@ function PlaceCard({
   place: Place;
   selected: boolean;
   cardRef: (
-    element: HTMLElement | null,
+    element:
+      HTMLElement | null,
   ) => void;
   onSelect: () => void;
   onEdit: () => void;
@@ -759,7 +928,6 @@ function LoadingState() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="h-3 w-24 animate-pulse rounded-full bg-white/[0.06]" />
-
           <div className="mt-3 h-8 w-64 animate-pulse rounded-full bg-white/[0.05]" />
         </div>
 
@@ -894,6 +1062,211 @@ function PlaceDialog({
     dialog.mode ===
     'edit';
 
+  const [
+    locationQuery,
+    setLocationQuery,
+  ] =
+    useState('');
+
+  const [
+    searchResults,
+    setSearchResults,
+  ] =
+    useState<GeocodingResult[]>(
+      [],
+    );
+
+  const [
+    searchAttribution,
+    setSearchAttribution,
+  ] =
+    useState<string | null>(
+      null,
+    );
+
+  const [
+    searchError,
+    setSearchError,
+  ] =
+    useState<string | null>(
+      null,
+    );
+
+  const [
+    searching,
+    setSearching,
+  ] =
+    useState(false);
+
+  const [
+    hasSearched,
+    setHasSearched,
+  ] =
+    useState(false);
+
+  async function searchLocation():
+    Promise<void> {
+    const query =
+      locationQuery.trim();
+
+    if (
+      query.length < 3
+    ) {
+      setSearchError(
+        'Enter at least 3 characters.',
+      );
+
+      return;
+    }
+
+    setSearching(
+      true,
+    );
+
+    setSearchError(
+      null,
+    );
+
+    setHasSearched(
+      true,
+    );
+
+    try {
+      const response =
+        await fetch(
+          `/api/geocoding/search?q=${encodeURIComponent(
+            query,
+          )}`,
+          {
+            method:
+              'GET',
+
+            headers: {
+              accept:
+                'application/json',
+            },
+
+            cache:
+              'no-store',
+          },
+        );
+
+      const payload =
+        (await response.json()) as unknown;
+
+      if (!response.ok) {
+        setSearchResults(
+          [],
+        );
+
+        setSearchAttribution(
+          null,
+        );
+
+        setSearchError(
+          getErrorMessage(
+            payload,
+          ),
+        );
+
+        return;
+      }
+
+      if (
+        !isRecord(
+          payload,
+        ) ||
+        !Array.isArray(
+          payload['results'],
+        )
+      ) {
+        setSearchResults(
+          [],
+        );
+
+        setSearchAttribution(
+          null,
+        );
+
+        setSearchError(
+          'Geocoding service returned an invalid response.',
+        );
+
+        return;
+      }
+
+      const typedPayload =
+        payload as unknown as GeocodingSearchResponse;
+
+      setSearchResults(
+        typedPayload.results,
+      );
+
+      setSearchAttribution(
+        typedPayload.attribution,
+      );
+    } catch {
+      setSearchResults(
+        [],
+      );
+
+      setSearchAttribution(
+        null,
+      );
+
+      setSearchError(
+        'Unable to search locations right now.',
+      );
+    } finally {
+      setSearching(
+        false,
+      );
+    }
+  }
+
+  function selectSearchResult(
+    result:
+      GeocodingResult,
+  ): void {
+    onChange({
+      ...form,
+
+      name:
+        result.name,
+
+      category:
+        inferPlaceCategory(
+          result,
+        ),
+
+      address:
+        result.displayName,
+
+      latitude:
+        String(
+          result.latitude,
+        ),
+
+      longitude:
+        String(
+          result.longitude,
+        ),
+
+      website:
+        result.website ??
+        form.website,
+
+      sourceProvider:
+        result.provider,
+
+      sourcePlaceId:
+        result.providerPlaceId,
+    });
+  }
+
+  const selectedSourceId =
+    form.sourcePlaceId;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
@@ -905,7 +1278,7 @@ function PlaceDialog({
           : 'Add place'
       }
     >
-      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[28px] border border-white/10 bg-[#0c1118] shadow-[0_30px_120px_rgba(0,0,0,0.65)]">
+      <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[28px] border border-white/10 bg-[#0c1118] shadow-[0_30px_120px_rgba(0,0,0,0.65)]">
         <div className="flex items-start justify-between border-b border-white/[0.07] px-6 py-5">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-300/70">
@@ -918,10 +1291,10 @@ function PlaceDialog({
                 : 'Add a place'}
             </h3>
 
-            <p className="mt-1 max-w-lg text-sm leading-6 text-white/35">
-              {isEditing
-                ? 'Update this place without changing the rest of your journey.'
-                : 'Save somewhere worth visiting. Coordinates can be added now or later.'}
+            <p className="mt-1 max-w-xl text-sm leading-6 text-white/35">
+              Search for a real
+              location or enter the
+              details manually.
             </p>
           </div>
 
@@ -941,7 +1314,275 @@ function PlaceDialog({
           </button>
         </div>
 
-        <div className="space-y-5 p-6">
+        <div className="space-y-6 p-6">
+          <section className="rounded-2xl border border-sky-300/10 bg-sky-300/[0.025] p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300/70">
+                  Find a location
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-white/30">
+                  Search OpenStreetMap
+                  and select a result
+                  to fill the place
+                  details automatically.
+                </p>
+              </div>
+
+              <MapPin
+                className="h-5 w-5 shrink-0 text-sky-300/40"
+                strokeWidth={1.6}
+              />
+            </div>
+
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <div className="relative min-w-0 flex-1">
+                <Search
+                  className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/25"
+                  strokeWidth={1.7}
+                />
+
+                <input
+                  value={
+                    locationQuery
+                  }
+                  onChange={(
+                    event,
+                  ) => {
+                    setLocationQuery(
+                      event.target.value,
+                    );
+
+                    if (
+                      searchError
+                    ) {
+                      setSearchError(
+                        null,
+                      );
+                    }
+                  }}
+                  onKeyDown={(
+                    event,
+                  ) => {
+                    if (
+                      event.key ===
+                      'Enter'
+                    ) {
+                      event.preventDefault();
+
+                      if (
+                        !searching
+                      ) {
+                        void searchLocation();
+                      }
+                    }
+                  }}
+                  placeholder="Duomo di Milano"
+                  className="w-full rounded-xl border border-white/[0.08] bg-black/10 py-3 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-sky-300/30"
+                />
+              </div>
+
+              <button
+                type="button"
+                disabled={
+                  searching ||
+                  locationQuery
+                    .trim()
+                    .length < 3
+                }
+                onClick={() => {
+                  void searchLocation();
+                }}
+                className="inline-flex min-w-[110px] items-center justify-center gap-2 rounded-xl border border-sky-300/15 bg-sky-300/[0.08] px-4 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-300/[0.12] disabled:cursor-not-allowed disabled:opacity-35"
+              >
+                {searching ? (
+                  <>
+                    <LoaderCircle
+                      className="h-4 w-4 animate-spin"
+                      strokeWidth={1.8}
+                    />
+
+                    Searching
+                  </>
+                ) : (
+                  <>
+                    <Search
+                      className="h-4 w-4"
+                      strokeWidth={1.8}
+                    />
+
+                    Search
+                  </>
+                )}
+              </button>
+            </div>
+
+            {searchError && (
+              <div className="mt-3 rounded-xl border border-rose-300/10 bg-rose-300/[0.04] px-3.5 py-2.5 text-xs text-rose-200/75">
+                {
+                  searchError
+                }
+              </div>
+            )}
+
+            {!searching &&
+              hasSearched &&
+              !searchError &&
+              searchResults.length ===
+                0 && (
+                <div className="mt-3 rounded-xl border border-white/[0.06] bg-black/10 px-4 py-5 text-center">
+                  <MapPin
+                    className="mx-auto h-4 w-4 text-white/25"
+                    strokeWidth={1.6}
+                  />
+
+                  <p className="mt-2 text-xs text-white/40">
+                    No matching
+                    locations found.
+                  </p>
+                </div>
+              )}
+
+            {searchResults.length >
+              0 && (
+              <div className="mt-4 overflow-hidden rounded-xl border border-white/[0.07] bg-black/10">
+                {searchResults.map(
+                  (
+                    result,
+                    index,
+                  ) => {
+                    const selected =
+                      selectedSourceId ===
+                      result.providerPlaceId;
+
+                    return (
+                      <button
+                        key={`${result.provider}:${result.providerPlaceId}`}
+                        type="button"
+                        onClick={() => {
+                          selectSearchResult(
+                            result,
+                          );
+                        }}
+                        className={[
+                          'flex w-full items-start gap-3 px-4 py-4 text-left transition',
+                          index > 0
+                            ? 'border-t border-white/[0.06]'
+                            : '',
+                          selected
+                            ? 'bg-sky-300/[0.07]'
+                            : 'hover:bg-white/[0.035]',
+                        ].join(
+                          ' ',
+                        )}
+                      >
+                        <div
+                          className={[
+                            'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border',
+                            selected
+                              ? 'border-sky-300/20 bg-sky-300/10 text-sky-200'
+                              : 'border-white/[0.07] bg-white/[0.03] text-white/35',
+                          ].join(
+                            ' ',
+                          )}
+                        >
+                          {selected ? (
+                            <Check
+                              className="h-4 w-4"
+                              strokeWidth={2}
+                            />
+                          ) : (
+                            <MapPin
+                              className="h-4 w-4"
+                              strokeWidth={1.7}
+                            />
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="truncate text-sm font-semibold text-white">
+                              {
+                                result.name
+                              }
+                            </p>
+
+                            {selected && (
+                              <span className="rounded-full border border-sky-300/15 bg-sky-300/[0.06] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-sky-200/80">
+                                Selected
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-white/35">
+                            {
+                              result.displayName
+                            }
+                          </p>
+
+                          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-white/25">
+                            <span>
+                              {result.latitude.toFixed(
+                                4,
+                              )}
+                              ,{' '}
+                              {result.longitude.toFixed(
+                                4,
+                              )}
+                            </span>
+
+                            {result.type && (
+                              <span>
+                                {
+                                  result.type
+                                }
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  },
+                )}
+
+                {searchAttribution && (
+                  <div className="border-t border-white/[0.06] px-4 py-2.5 text-[9px] uppercase tracking-[0.12em] text-white/20">
+                    {
+                      searchAttribution
+                    }
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+
+          {form.sourceProvider &&
+            form.sourcePlaceId && (
+              <div className="flex items-center gap-2 rounded-xl border border-emerald-300/10 bg-emerald-300/[0.035] px-4 py-3">
+                <Check
+                  className="h-4 w-4 shrink-0 text-emerald-300"
+                  strokeWidth={2}
+                />
+
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-emerald-100/80">
+                    Location linked
+                  </p>
+
+                  <p className="mt-0.5 truncate text-[10px] uppercase tracking-[0.12em] text-emerald-200/35">
+                    {
+                      form.sourceProvider
+                    }{' '}
+                    ·{' '}
+                    {
+                      form.sourcePlaceId
+                    }
+                  </p>
+                </div>
+              </div>
+            )}
+
           <label className="block">
             <FieldLabel>
               Name
@@ -1075,7 +1716,7 @@ function PlaceDialog({
               </FieldLabel>
 
               <span className="text-[10px] uppercase tracking-[0.16em] text-white/20">
-                Optional
+                Advanced
               </span>
             </div>
 
@@ -1124,9 +1765,10 @@ function PlaceDialog({
             </div>
 
             <p className="mt-2 text-xs leading-5 text-white/25">
-              Latitude and longitude
-              must be provided
-              together.
+              Usually filled
+              automatically when a
+              search result is
+              selected.
             </p>
           </div>
 
@@ -1540,7 +2182,8 @@ export function PlacesPanel({
 
   function registerPlaceCard(
     placeId: string,
-    element: HTMLElement | null,
+    element:
+      HTMLElement | null,
   ): void {
     if (element) {
       placeCardRefs.current.set(
@@ -1674,6 +2317,12 @@ export function PlacesPanel({
         nullableText(
           form.notes,
         ),
+
+      sourceProvider:
+        form.sourceProvider,
+
+      sourcePlaceId:
+        form.sourcePlaceId,
     };
 
     setSubmitting(
