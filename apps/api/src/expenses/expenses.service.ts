@@ -13,7 +13,7 @@ export class ExpensesService {
   ) {}
 
   async create(ownerId: string, tripId: string, dto: CreateExpenseDto) {
-    await this.tripsService.findOwnedTripOrThrow(ownerId, tripId);
+    await this.tripsService.findEditableTripOrThrow(ownerId, tripId);
 
     const title = dto.title.trim();
 
@@ -42,7 +42,7 @@ export class ExpensesService {
   }
 
   async findAllOwned(ownerId: string, tripId: string) {
-    await this.tripsService.findOwnedTripOrThrow(ownerId, tripId);
+    await this.tripsService.findAccessibleTripOrThrow(ownerId, tripId);
 
     const expenses = await this.prisma.expense.findMany({
       where: {
@@ -62,20 +62,9 @@ export class ExpensesService {
   }
 
   async findOwnedExpenseOrThrow(ownerId: string, tripId: string, expenseId: string) {
-    await this.tripsService.findOwnedTripOrThrow(ownerId, tripId);
+    await this.tripsService.findAccessibleTripOrThrow(ownerId, tripId);
 
-    const expense = await this.prisma.expense.findFirst({
-      where: {
-        id: expenseId,
-        tripId,
-      },
-    });
-
-    if (!expense) {
-      throw new NotFoundException('Expense not found');
-    }
-
-    return expense;
+    return this.findExpenseInTripOrThrow(tripId, expenseId);
   }
 
   async findOne(ownerId: string, tripId: string, expenseId: string) {
@@ -96,7 +85,9 @@ export class ExpensesService {
       throw new BadRequestException('At least one field must be provided');
     }
 
-    const existing = await this.findOwnedExpenseOrThrow(ownerId, tripId, expenseId);
+    await this.tripsService.findEditableTripOrThrow(ownerId, tripId);
+
+    const existing = await this.findExpenseInTripOrThrow(tripId, expenseId);
 
     const title = dto.title !== undefined ? dto.title.trim() : undefined;
 
@@ -135,13 +126,30 @@ export class ExpensesService {
   }
 
   async remove(ownerId: string, tripId: string, expenseId: string): Promise<void> {
-    const existing = await this.findOwnedExpenseOrThrow(ownerId, tripId, expenseId);
+    await this.tripsService.findEditableTripOrThrow(ownerId, tripId);
+
+    const existing = await this.findExpenseInTripOrThrow(tripId, expenseId);
 
     await this.prisma.expense.delete({
       where: {
         id: existing.id,
       },
     });
+  }
+
+  private async findExpenseInTripOrThrow(tripId: string, expenseId: string) {
+    const expense = await this.prisma.expense.findFirst({
+      where: {
+        id: expenseId,
+        tripId,
+      },
+    });
+
+    if (!expense) {
+      throw new NotFoundException('Expense not found');
+    }
+
+    return expense;
   }
 
   private normalizeMoney(value: string): string {

@@ -10,6 +10,7 @@ import { GeocodingModule } from './geocoding/geocoding.module';
 import { HealthModule } from './health/health.module';
 import { ItineraryModule } from './itinerary/itinerary.module';
 import { PlacesModule } from './places/places.module';
+import { RealtimeModule } from './realtime/realtime.module';
 import { TripsModule } from './trips/trips.module';
 import { UsersModule } from './users/users.module';
 import { WeatherModule } from './weather/weather.module';
@@ -26,6 +27,7 @@ import { WeatherModule } from './weather/weather.module';
     UsersModule,
     AuthModule,
     TripsModule,
+    RealtimeModule,
     ItineraryModule,
     PlacesModule,
     GeocodingModule,

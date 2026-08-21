@@ -64,7 +64,7 @@ const forecast: ProviderForecast = {
   ],
 };
 
-type FindOwnedTripMock = (ownerId: string, tripId: string) => Promise<typeof trip>;
+type FindAccessibleTripMock = (ownerId: string, tripId: string) => Promise<typeof trip>;
 
 type ResolveLocationMock = (query: string) => Promise<WeatherLocation | null>;
 
@@ -73,27 +73,27 @@ type GetForecastMock = (location: WeatherLocation, timezone: string) => Promise<
 describe('WeatherService', () => {
   let service: WeatherService;
 
-  let findOwnedTripOrThrow: jest.Mock<FindOwnedTripMock>;
+  let findAccessibleTripOrThrow: jest.Mock<FindAccessibleTripMock>;
 
   let resolveLocation: jest.Mock<ResolveLocationMock>;
 
   let getForecast: jest.Mock<GetForecastMock>;
 
   beforeEach(() => {
-    findOwnedTripOrThrow = jest.fn<FindOwnedTripMock>();
+    findAccessibleTripOrThrow = jest.fn<FindAccessibleTripMock>();
 
     resolveLocation = jest.fn<ResolveLocationMock>();
 
     getForecast = jest.fn<GetForecastMock>();
 
-    findOwnedTripOrThrow.mockResolvedValue(trip);
+    findAccessibleTripOrThrow.mockResolvedValue(trip);
 
     resolveLocation.mockResolvedValue(location);
 
     getForecast.mockResolvedValue(forecast);
 
     const tripsService = {
-      findOwnedTripOrThrow,
+      findAccessibleTripOrThrow,
     } as unknown as TripsService;
 
     const weatherProvider = {
@@ -107,7 +107,7 @@ describe('WeatherService', () => {
   it('returns normalized weather for every trip day', async () => {
     const result = await service.getTripWeather(OWNER_ID, TRIP_ID);
 
-    expect(findOwnedTripOrThrow).toHaveBeenCalledWith(OWNER_ID, TRIP_ID);
+    expect(findAccessibleTripOrThrow).toHaveBeenCalledWith(OWNER_ID, TRIP_ID);
 
     expect(resolveLocation).toHaveBeenCalledWith('Milan, Italy');
 
@@ -168,8 +168,8 @@ describe('WeatherService', () => {
     expect(getForecast).not.toHaveBeenCalled();
   });
 
-  it('preserves owner isolation before calling the external provider', async () => {
-    findOwnedTripOrThrow.mockRejectedValue(new NotFoundException('Trip not found'));
+  it('preserves trip access isolation before calling the external provider', async () => {
+    findAccessibleTripOrThrow.mockRejectedValue(new NotFoundException('Trip not found'));
 
     await expect(service.getTripWeather(OWNER_ID, TRIP_ID)).rejects.toBeInstanceOf(
       NotFoundException,

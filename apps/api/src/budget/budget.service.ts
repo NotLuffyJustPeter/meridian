@@ -18,7 +18,7 @@ export class BudgetService {
   ) {}
 
   async getBudget(ownerId: string, tripId: string) {
-    const trip = await this.tripsService.findOwnedTripOrThrow(ownerId, tripId);
+    const trip = await this.tripsService.findAccessibleTripOrThrow(ownerId, tripId);
 
     const budget = await this.prisma.budget.findUnique({
       where: {
@@ -44,7 +44,7 @@ export class BudgetService {
   }
 
   async upsertBudget(ownerId: string, tripId: string, dto: UpsertBudgetDto) {
-    const trip = await this.tripsService.findOwnedTripOrThrow(ownerId, tripId);
+    const trip = await this.tripsService.findEditableTripOrThrow(ownerId, tripId);
     const totalAmount = this.normalizeMoney(dto.totalAmount, 'totalAmount');
 
     const existingBudget = await this.prisma.budget.findUnique({
@@ -91,7 +91,7 @@ export class BudgetService {
   }
 
   async listCategoryLimits(ownerId: string, tripId: string) {
-    const trip = await this.tripsService.findOwnedTripOrThrow(ownerId, tripId);
+    const trip = await this.tripsService.findAccessibleTripOrThrow(ownerId, tripId);
 
     const budget = await this.prisma.budget.findUnique({
       where: {
@@ -130,7 +130,7 @@ export class BudgetService {
     categoryValue: string,
     dto: UpsertCategoryLimitDto,
   ) {
-    const trip = await this.tripsService.findOwnedTripOrThrow(ownerId, tripId);
+    const trip = await this.tripsService.findEditableTripOrThrow(ownerId, tripId);
     const category = this.parseCategory(categoryValue);
     const amount = this.normalizeMoney(dto.amount, 'amount');
 
@@ -184,7 +184,7 @@ export class BudgetService {
   }
 
   async removeCategoryLimit(ownerId: string, tripId: string, categoryValue: string): Promise<void> {
-    await this.tripsService.findOwnedTripOrThrow(ownerId, tripId);
+    await this.tripsService.findEditableTripOrThrow(ownerId, tripId);
     const category = this.parseCategory(categoryValue);
 
     const budget = await this.prisma.budget.findUnique({
@@ -210,7 +210,7 @@ export class BudgetService {
   }
 
   async getOverview(ownerId: string, tripId: string) {
-    const trip = await this.tripsService.findOwnedTripOrThrow(ownerId, tripId);
+    const trip = await this.tripsService.findAccessibleTripOrThrow(ownerId, tripId);
 
     const [budget, expenseAggregate, groupedExpenses] = await Promise.all([
       this.prisma.budget.findUnique({

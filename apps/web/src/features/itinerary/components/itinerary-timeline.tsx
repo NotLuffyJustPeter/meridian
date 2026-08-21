@@ -6,8 +6,6 @@ import {
   useState,
 } from 'react';
 
-import { useModalBehavior } from '../../../hooks/use-modal-behavior';
-
 import type {
   Activity,
   ActivityCategory,
@@ -17,6 +15,8 @@ import type {
   TripDay,
   UpdateActivityInput,
 } from '../types/itinerary.types';
+
+import { useTripRealtime } from '../../realtime/hooks/use-trip-realtime';
 
 interface ItineraryTimelineProps {
   tripId: string;
@@ -745,12 +745,6 @@ function ActivityDialog({
   const isEditing =
     dialog.mode === 'edit';
 
-  useModalBehavior({
-    open: true,
-    disabled: submitting,
-    onClose,
-  });
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
@@ -803,7 +797,6 @@ function ActivityDialog({
             </span>
 
             <input
-              autoFocus
               value={form.title}
               onChange={(
                 event,
@@ -1046,12 +1039,6 @@ function DeleteDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  useModalBehavior({
-    open: true,
-    disabled: deleting,
-    onClose: onCancel,
-  });
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
@@ -1202,6 +1189,16 @@ export function ItineraryTimeline({
 
     return nextState;
   }
+
+  const {
+    status: realtimeStatus,
+    onlineUsers,
+  } = useTripRealtime({
+    tripId,
+    onItineraryChanged: () => {
+      void reloadItinerary();
+    },
+  });
 
   async function persistActivityOrder(
     dayId: string,
@@ -1895,6 +1892,25 @@ export function ItineraryTimeline({
               activities
             </span>
 
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-white/45">
+              <span
+                className={[
+                  'h-1.5 w-1.5 rounded-full',
+                  realtimeStatus === 'connected'
+                    ? 'bg-emerald-400'
+                    : realtimeStatus === 'connecting'
+                      ? 'animate-pulse bg-amber-300'
+                      : 'bg-white/25',
+                ].join(' ')}
+              />
+
+              {realtimeStatus === 'connected'
+                ? `${onlineUsers} online`
+                : realtimeStatus === 'connecting'
+                  ? 'Connecting live'
+                  : 'Live offline'}
+            </span>
+
             <button
               type="button"
               onClick={() =>
@@ -1910,10 +1926,7 @@ export function ItineraryTimeline({
           </div>
         </div>
 
-        <div
-          className="scrollbar-meridian-x -mx-1 px-1 pb-2"
-          aria-label="Select itinerary day"
-        >
+        <div className="-mx-1 overflow-x-auto px-1 pb-2">
           <div className="flex min-w-max gap-2.5">
             {itinerary.days.map(
               (day) => (

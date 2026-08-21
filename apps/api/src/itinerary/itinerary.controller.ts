@@ -15,21 +15,24 @@ import {
 import type { AccessTokenPayload } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
+import { RealtimePublisherService } from '../realtime/realtime-publisher.service';
 import { CreateActivityDto } from './dto/create-activity.dto';
+import { ReorderActivitiesDto } from './dto/reorder-activities.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { ItineraryService } from './itinerary.service';
-import { ReorderActivitiesDto } from './dto/reorder-activities.dto';
 
 @Controller('trips/:tripId/itinerary')
 @UseGuards(AccessTokenGuard)
 export class ItineraryController {
-  constructor(private readonly itineraryService: ItineraryService) {}
+  constructor(
+    private readonly itineraryService: ItineraryService,
+    private readonly realtimePublisher: RealtimePublisherService,
+  ) {}
 
   @Get()
   getItinerary(
     @CurrentUser()
     user: AccessTokenPayload,
-
     @Param(
       'tripId',
       new ParseUUIDPipe({
@@ -42,10 +45,9 @@ export class ItineraryController {
   }
 
   @Post('days/:dayId/activities')
-  createActivity(
+  async createActivity(
     @CurrentUser()
     user: AccessTokenPayload,
-
     @Param(
       'tripId',
       new ParseUUIDPipe({
@@ -53,7 +55,6 @@ export class ItineraryController {
       }),
     )
     tripId: string,
-
     @Param(
       'dayId',
       new ParseUUIDPipe({
@@ -61,18 +62,25 @@ export class ItineraryController {
       }),
     )
     dayId: string,
-
     @Body()
     dto: CreateActivityDto,
   ) {
-    return this.itineraryService.createActivity(user.sub, tripId, dayId, dto);
+    const activity = await this.itineraryService.createActivity(user.sub, tripId, dayId, dto);
+
+    this.realtimePublisher.publishItineraryChanged({
+      tripId,
+      dayId,
+      type: 'created',
+      activityId: activity.id,
+    });
+
+    return activity;
   }
 
   @Patch('days/:dayId/activities/reorder')
-  reorderActivities(
+  async reorderActivities(
     @CurrentUser()
     user: AccessTokenPayload,
-
     @Param(
       'tripId',
       new ParseUUIDPipe({
@@ -80,7 +88,6 @@ export class ItineraryController {
       }),
     )
     tripId: string,
-
     @Param(
       'dayId',
       new ParseUUIDPipe({
@@ -88,18 +95,29 @@ export class ItineraryController {
       }),
     )
     dayId: string,
-
     @Body()
     dto: ReorderActivitiesDto,
   ) {
-    return this.itineraryService.reorderActivities(user.sub, tripId, dayId, dto.activityIds);
+    const activities = await this.itineraryService.reorderActivities(
+      user.sub,
+      tripId,
+      dayId,
+      dto.activityIds,
+    );
+
+    this.realtimePublisher.publishItineraryChanged({
+      tripId,
+      dayId,
+      type: 'reordered',
+    });
+
+    return activities;
   }
 
   @Patch('days/:dayId/activities/:activityId')
-  updateActivity(
+  async updateActivity(
     @CurrentUser()
     user: AccessTokenPayload,
-
     @Param(
       'tripId',
       new ParseUUIDPipe({
@@ -107,7 +125,6 @@ export class ItineraryController {
       }),
     )
     tripId: string,
-
     @Param(
       'dayId',
       new ParseUUIDPipe({
@@ -115,7 +132,6 @@ export class ItineraryController {
       }),
     )
     dayId: string,
-
     @Param(
       'activityId',
       new ParseUUIDPipe({
@@ -123,11 +139,25 @@ export class ItineraryController {
       }),
     )
     activityId: string,
-
     @Body()
     dto: UpdateActivityDto,
   ) {
-    return this.itineraryService.updateActivity(user.sub, tripId, dayId, activityId, dto);
+    const activity = await this.itineraryService.updateActivity(
+      user.sub,
+      tripId,
+      dayId,
+      activityId,
+      dto,
+    );
+
+    this.realtimePublisher.publishItineraryChanged({
+      tripId,
+      dayId,
+      type: 'updated',
+      activityId,
+    });
+
+    return activity;
   }
 
   @Delete('days/:dayId/activities/:activityId')
@@ -135,7 +165,6 @@ export class ItineraryController {
   async removeActivity(
     @CurrentUser()
     user: AccessTokenPayload,
-
     @Param(
       'tripId',
       new ParseUUIDPipe({
@@ -143,7 +172,6 @@ export class ItineraryController {
       }),
     )
     tripId: string,
-
     @Param(
       'dayId',
       new ParseUUIDPipe({
@@ -151,7 +179,6 @@ export class ItineraryController {
       }),
     )
     dayId: string,
-
     @Param(
       'activityId',
       new ParseUUIDPipe({
@@ -161,5 +188,12 @@ export class ItineraryController {
     activityId: string,
   ): Promise<void> {
     await this.itineraryService.removeActivity(user.sub, tripId, dayId, activityId);
+
+    this.realtimePublisher.publishItineraryChanged({
+      tripId,
+      dayId,
+      type: 'deleted',
+      activityId,
+    });
   }
 }

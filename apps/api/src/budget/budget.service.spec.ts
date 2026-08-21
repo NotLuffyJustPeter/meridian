@@ -76,7 +76,7 @@ type ExpenseAggregateMock = (args: unknown) => Promise<ExpenseAggregateResult>;
 
 type ExpenseGroupByMock = (args: unknown) => Promise<ExpenseGroupResult[]>;
 
-type FindOwnedTripMock = (ownerId: string, tripId: string) => Promise<TripRecord>;
+type FindTripAccessMock = (ownerId: string, tripId: string) => Promise<TripRecord>;
 
 function decimal(value: string): DecimalLike {
   return {
@@ -121,7 +121,8 @@ describe('BudgetService', () => {
   let categoryDeleteMany: jest.Mock<CategoryDeleteManyMock>;
   let expenseAggregate: jest.Mock<ExpenseAggregateMock>;
   let expenseGroupBy: jest.Mock<ExpenseGroupByMock>;
-  let findOwnedTripOrThrow: jest.Mock<FindOwnedTripMock>;
+  let findAccessibleTripOrThrow: jest.Mock<FindTripAccessMock>;
+  let findEditableTripOrThrow: jest.Mock<FindTripAccessMock>;
 
   beforeEach(() => {
     budgetFindUnique = jest.fn<BudgetFindUniqueMock>();
@@ -131,7 +132,8 @@ describe('BudgetService', () => {
     categoryDeleteMany = jest.fn<CategoryDeleteManyMock>();
     expenseAggregate = jest.fn<ExpenseAggregateMock>();
     expenseGroupBy = jest.fn<ExpenseGroupByMock>();
-    findOwnedTripOrThrow = jest.fn<FindOwnedTripMock>();
+    findAccessibleTripOrThrow = jest.fn<FindTripAccessMock>();
+    findEditableTripOrThrow = jest.fn<FindTripAccessMock>();
 
     const prisma = {
       budget: {
@@ -150,12 +152,18 @@ describe('BudgetService', () => {
     } as unknown as PrismaService;
 
     const tripsService = {
-      findOwnedTripOrThrow,
+      findAccessibleTripOrThrow,
+      findEditableTripOrThrow,
     } as unknown as TripsService;
 
     service = new BudgetService(prisma, tripsService);
 
-    findOwnedTripOrThrow.mockResolvedValue({
+    findAccessibleTripOrThrow.mockResolvedValue({
+      id: TRIP_ID,
+      currency: 'EUR',
+    });
+
+    findEditableTripOrThrow.mockResolvedValue({
       id: TRIP_ID,
       currency: 'EUR',
     });
@@ -456,8 +464,8 @@ describe('BudgetService', () => {
     });
   });
 
-  it('does not query financial data when trip ownership fails', async () => {
-    findOwnedTripOrThrow.mockRejectedValue(new NotFoundException('Trip not found'));
+  it('does not query financial data when trip access fails', async () => {
+    findAccessibleTripOrThrow.mockRejectedValue(new NotFoundException('Trip not found'));
 
     await expect(service.getOverview(OWNER_ID, TRIP_ID)).rejects.toBeInstanceOf(NotFoundException);
 
