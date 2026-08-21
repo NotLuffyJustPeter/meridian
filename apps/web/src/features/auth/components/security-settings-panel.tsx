@@ -5,10 +5,10 @@ import {
   KeyRound,
   Link2,
   Loader2,
-  LockKeyhole,
   ShieldCheck,
   Unlink,
 } from 'lucide-react';
+import Link from 'next/link';
 import {
   useCallback,
   useEffect,
@@ -21,6 +21,7 @@ import type {
 } from '../types/auth.types';
 import { getApiErrorMessage } from '../auth-client';
 import { GoogleLinkButton } from './google-link-button';
+import { MfaSecurityCard } from './mfa-security-card';
 
 type SecuritySettingsPanelProps = {
   user: PublicUser;
@@ -260,11 +261,14 @@ export function SecuritySettingsPanel({
                 </div>
               </div>
 
-              <div className="text-xs text-slate-600">
+              <Link
+                href={`/forgot-password?email=${encodeURIComponent(user.email)}`}
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 text-xs font-medium text-slate-400 transition hover:border-sky-300/15 hover:bg-sky-300/[0.04] hover:text-white"
+              >
                 {status?.password.enabled
-                  ? 'Available'
-                  : 'Password setup comes next'}
-              </div>
+                  ? 'Reset password'
+                  : 'Set password'}
+              </Link>
             </div>
 
             <div className="grid gap-5 px-6 py-6 sm:px-7 lg:grid-cols-[1fr_minmax(220px,360px)] lg:items-center">
@@ -348,28 +352,16 @@ export function SecuritySettingsPanel({
         )}
       </section>
 
-      <section className="rounded-[1.75rem] border border-white/[0.07] bg-white/[0.025] px-6 py-6 sm:px-7">
-        <div className="flex gap-4">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-sky-300/10 bg-sky-300/[0.045]">
-            <LockKeyhole className="h-[18px] w-[18px] text-sky-200" />
-          </span>
-
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-medium text-slate-100">
-                Two-step verification
-              </h3>
-              <span className="rounded-full border border-sky-300/10 bg-sky-300/[0.045] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-sky-200/70">
-                Next
-              </span>
-            </div>
-
-            <p className="mt-1.5 max-w-2xl text-xs leading-5 text-slate-500">
-              The next security sprint adds authenticator-app codes, QR enrollment, login challenges, and recovery codes.
-            </p>
-          </div>
-        </div>
-      </section>
+      {status && (
+        <MfaSecurityCard
+          status={
+            status.mfa
+          }
+          onStatusChanged={
+            loadStatus
+          }
+        />
+      )}
 
       {error && (
         <div

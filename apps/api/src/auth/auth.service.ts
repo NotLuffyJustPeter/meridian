@@ -14,6 +14,7 @@ import { UsersService } from '../users/users.service';
 import { AuthSessionsService } from './auth-sessions.service';
 import type {
   AccessTokenPayload,
+  AuthAttemptResult,
   LoginResult,
   PublicUser,
   RefreshResult,
@@ -23,6 +24,7 @@ import type {
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { GoogleIdentityService } from './google-identity.service';
+import { MfaService } from './mfa.service';
 
 @Injectable()
 export class AuthService {
@@ -32,6 +34,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly googleIdentityService: GoogleIdentityService,
+    private readonly mfaService: MfaService,
   ) {}
 
   async register(dto: RegisterDto): Promise<PublicUser> {
@@ -52,7 +55,7 @@ export class AuthService {
     return this.toPublicUser(user);
   }
 
-  async login(dto: LoginDto): Promise<LoginResult> {
+  async login(dto: LoginDto): Promise<AuthAttemptResult> {
     const user = await this.usersService.findByEmail(dto.email);
 
     if (!user || !user.passwordHash) {
@@ -65,10 +68,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return this.loginUser(user);
+    return this.completeFirstFactor(user);
   }
 
-  async loginWithGoogle(credential: string): Promise<LoginResult> {
+  async loginWithGoogle(credential: string): Promise<AuthAttemptResult> {
     const identity = await this.googleIdentityService.verifyCredential(credential);
 
     const federatedUser = await this.usersService.findByExternalIdentity(
@@ -77,7 +80,7 @@ export class AuthService {
     );
 
     if (federatedUser) {
-      return this.loginUser(federatedUser);
+      return this.completeFirstFactor(federatedUser);
     }
 
     const existingUser = await this.usersService.findByEmail(identity.email);
@@ -97,7 +100,7 @@ export class AuthService {
       providerSubject: identity.providerSubject,
     });
 
-    return this.loginUser(user);
+    return this.completeFirstFactor(user);
   }
 
   async getSecurityStatus(userId: string): Promise<SecurityStatus> {
@@ -111,6 +114,8 @@ export class AuthService {
 
     const hasPassword = Boolean(user.passwordHash);
 
+    const mfa = await this.mfaService.getStatus(user.id);
+
     return {
       password: {
         enabled: hasPassword,
@@ -119,6 +124,7 @@ export class AuthService {
         connected: googleIdentity !== null,
         canDisconnect: googleIdentity !== null && hasPassword,
       },
+      mfa,
     };
   }
 
@@ -194,6 +200,56 @@ export class AuthService {
     await this.usersService.deleteExternalIdentity(googleIdentity.id);
 
     return this.getSecurityStatus(user.id);
+  }
+
+  async updateProfile(userId: string, name: string): Promise<PublicUser> {
+    const existingUser = await this.usersService.findById(userId);
+
+    if (!existingUser) {
+      throw new UnauthorizedException('Authenticated user no longer exists');
+    }
+
+    const user = await this.usersService.updateName(existingUser.id, name);
+
+    return this.toPublicUser(user);
+  }
+
+  async startMfaEnrollment(userId: string) {
+    const user = await this.usersService.findById(userId);
+
+    if (!user) {
+      throw new UnauthorizedException('Authenticated user no longer exists');
+    }
+
+    return this.mfaService.startEnrollment(user.id, user.email);
+  }
+
+  async confirmMfaEnrollment(userId: string, code: string) {
+    const result = await this.mfaService.confirmEnrollment(userId, code);
+
+    return result;
+  }
+
+  async verifyMfaChallenge(challengeToken: string, code: string): Promise<LoginResult> {
+    const userId = await this.mfaService.verifyLoginChallenge(challengeToken, code);
+
+    const user = await this.usersService.findById(userId);
+
+    if (!user) {
+      throw new UnauthorizedException('Authenticated user no longer exists');
+    }
+
+    return this.loginUser(user);
+  }
+
+  async regenerateMfaRecoveryCodes(userId: string, code: string): Promise<string[]> {
+    return this.mfaService.regenerateRecoveryCodes(userId, code);
+  }
+
+  async disableMfa(userId: string, code: string): Promise<SecurityStatus> {
+    await this.mfaService.disable(userId, code);
+
+    return this.getSecurityStatus(userId);
   }
 
   async refresh(refreshToken: string): Promise<RefreshResult> {
@@ -272,6 +328,17 @@ export class AuthService {
     }
 
     return this.toPublicUser(user);
+  }
+
+  private async completeFirstFactor(user: User): Promise<AuthAttemptResult> {
+    if (await this.mfaService.isEnabled(user.id)) {
+      return {
+        mfaRequired: true,
+        challengeToken: await this.mfaService.createLoginChallenge(user.id),
+      };
+    }
+
+    return this.loginUser(user);
   }
 
   private async loginUser(user: User): Promise<LoginResult> {

@@ -128,6 +128,17 @@ export class UsersService {
     });
   }
 
+  async updateName(userId: string, name: string): Promise<User> {
+    return this.prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        name: name.trim(),
+      },
+    });
+  }
+
   private normalizeEmail(email: string): string {
     return email.trim().toLowerCase();
   }

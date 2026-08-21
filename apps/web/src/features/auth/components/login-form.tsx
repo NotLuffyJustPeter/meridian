@@ -22,11 +22,13 @@ import { PasswordField } from './password-field';
 
 type LoginFormProps = {
   registrationSucceeded?: boolean;
+  passwordResetSucceeded?: boolean;
   googleClientId: string;
 };
 
 export function LoginForm({
   registrationSucceeded = false,
+  passwordResetSucceeded = false,
   googleClientId,
 }: LoginFormProps) {
   const router = useRouter();
@@ -76,6 +78,24 @@ export function LoginForm({
           );
 
         setServerError(message);
+        return;
+      }
+
+      const payload =
+        (await response.json()) as {
+          data?: {
+            mfaRequired?: boolean;
+          };
+        };
+
+      if (
+        payload.data
+          ?.mfaRequired
+      ) {
+        router.replace(
+          '/verify',
+        );
+        router.refresh();
         return;
       }
 
@@ -143,6 +163,23 @@ export function LoginForm({
           </motion.div>
         )}
 
+        {passwordResetSucceeded && (
+          <motion.div
+            initial={
+              reduceMotion
+                ? false
+                : { opacity: 0, y: -6 }
+            }
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-5 flex items-start gap-3 rounded-2xl border border-emerald-300/15 bg-emerald-300/[0.06] px-4 py-3 text-sm text-emerald-100"
+          >
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              Your password has been updated. Sign in again with your new password.
+            </span>
+          </motion.div>
+        )}
+
         {serverError && (
           <div
             role="alert"
@@ -201,6 +238,15 @@ export function LoginForm({
             error={errors.password?.message}
             {...register('password')}
           />
+
+          <div className="-mt-2 flex justify-end">
+            <Link
+              href="/forgot-password"
+              className="text-xs font-medium text-sky-200/70 transition hover:text-sky-100"
+            >
+              Forgot your password?
+            </Link>
+          </div>
 
           <motion.button
             type="submit"

@@ -1,11 +1,27 @@
+
 import { NextResponse } from 'next/server';
 
 import type {
   ApiEnvelope,
   LoginApiData,
+  MfaRequiredApiData,
+  SuccessfulLoginApiData,
 } from '../../../../features/auth/types/auth.types';
 import { serverApiFetch } from '../../../../lib/api/server-api';
-import { setAuthCookies } from '../../../../lib/auth/auth-cookies';
+import {
+  clearMfaChallengeCookie,
+  setAuthCookies,
+  setMfaChallengeCookie,
+} from '../../../../lib/auth/auth-cookies';
+
+function isMfaRequired(
+  data: LoginApiData,
+): data is MfaRequiredApiData {
+  return (
+    'mfaRequired' in data &&
+    data.mfaRequired === true
+  );
+}
 
 export async function POST(
   request: Request,
@@ -13,7 +29,8 @@ export async function POST(
   let body: unknown;
 
   try {
-    body = await request.json();
+    body =
+      await request.json();
   } catch {
     return NextResponse.json(
       {
@@ -37,7 +54,10 @@ export async function POST(
         '/api/v1/auth/login',
         {
           method: 'POST',
-          body: JSON.stringify(body),
+          body:
+            JSON.stringify(
+              body,
+            ),
         },
       );
 
@@ -45,7 +65,8 @@ export async function POST(
       return NextResponse.json(
         payload,
         {
-          status: response.status,
+          status:
+            response.status,
         },
       );
     }
@@ -53,19 +74,55 @@ export async function POST(
     const result =
       payload as ApiEnvelope<LoginApiData>;
 
+    if (
+      isMfaRequired(
+        result.data,
+      )
+    ) {
+      await setMfaChallengeCookie(
+        result.data.challengeToken,
+      );
+
+      return NextResponse.json(
+        {
+          data: {
+            mfaRequired:
+              true,
+          },
+          meta:
+            result.meta,
+          message:
+            result.message,
+        },
+        {
+          status:
+            response.status,
+        },
+      );
+    }
+
+    const login =
+      result.data as SuccessfulLoginApiData;
+
+    await clearMfaChallengeCookie();
+
     await setAuthCookies(
-      result.data.accessToken,
-      result.data.refreshToken,
+      login.accessToken,
+      login.refreshToken,
     );
 
     return NextResponse.json(
       {
-        data: result.data.user,
-        meta: result.meta,
-        message: result.message,
+        data:
+          login.user,
+        meta:
+          result.meta,
+        message:
+          result.message,
       },
       {
-        status: response.status,
+        status:
+          response.status,
       },
     );
   } catch {

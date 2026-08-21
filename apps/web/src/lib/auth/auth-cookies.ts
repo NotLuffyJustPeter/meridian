@@ -6,6 +6,9 @@ export const ACCESS_COOKIE_NAME =
 export const REFRESH_COOKIE_NAME =
   'meridian_refresh';
 
+export const MFA_CHALLENGE_COOKIE_NAME =
+  'meridian_mfa_challenge';
+
 const DEFAULT_ACCESS_MAX_AGE =
   15 * 60;
 
@@ -128,6 +131,48 @@ export async function getAuthTokens(): Promise<{
       REFRESH_COOKIE_NAME,
     )?.value,
   };
+}
+
+
+export async function setMfaChallengeCookie(
+  challengeToken: string,
+): Promise<void> {
+  const cookieStore =
+    await cookies();
+
+  cookieStore.set(
+    MFA_CHALLENGE_COOKIE_NAME,
+    challengeToken,
+    {
+      httpOnly: true,
+      secure:
+        shouldUseSecureCookies(),
+      sameSite:
+        'lax',
+      path: '/',
+      maxAge: 5 * 60,
+    },
+  );
+}
+
+export async function getMfaChallengeToken(): Promise<
+  string | undefined
+> {
+  const cookieStore =
+    await cookies();
+
+  return cookieStore.get(
+    MFA_CHALLENGE_COOKIE_NAME,
+  )?.value;
+}
+
+export async function clearMfaChallengeCookie(): Promise<void> {
+  const cookieStore =
+    await cookies();
+
+  cookieStore.delete(
+    MFA_CHALLENGE_COOKIE_NAME,
+  );
 }
 
 export async function clearAuthCookies(): Promise<void> {

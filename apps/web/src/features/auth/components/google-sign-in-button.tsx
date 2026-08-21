@@ -135,6 +135,25 @@ export function GoogleSignInButton({
             return;
           }
 
+          const payload =
+            (await apiResponse.json()) as {
+              data?: {
+                mfaRequired?: boolean;
+              };
+            };
+
+          if (
+            payload.data
+              ?.mfaRequired
+          ) {
+            router.replace(
+              '/verify',
+            );
+
+            router.refresh();
+            return;
+          }
+
           router.replace(
             '/dashboard',
           );

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { LogoutButton } from '../../../features/auth/components/logout-button';
+import { AccountMenu } from '../../../features/auth/components/account-menu';
 import { TripsDashboard } from '../../../features/trips/components/trips-dashboard';
 import { requireAuthenticatedUser } from '../../../lib/auth/server-auth';
 
@@ -55,19 +55,9 @@ export default async function DashboardPage() {
             </span>
           </Link>
 
-          <div className="flex items-center gap-4">
-            <div className="hidden text-right sm:block">
-              <p className="text-sm font-medium text-slate-200">
-                {user.name}
-              </p>
-
-              <p className="mt-0.5 text-xs text-slate-500">
-                {user.email}
-              </p>
-            </div>
-
-            <LogoutButton />
-          </div>
+          <AccountMenu
+            user={user}
+          />
         </header>
 
         <section className="pb-12 pt-16 sm:pt-20">

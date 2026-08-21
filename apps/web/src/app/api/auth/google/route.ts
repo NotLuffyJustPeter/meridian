@@ -4,9 +4,24 @@ import { NextResponse } from 'next/server';
 import type {
   ApiEnvelope,
   LoginApiData,
+  MfaRequiredApiData,
+  SuccessfulLoginApiData,
 } from '../../../../features/auth/types/auth.types';
 import { serverApiFetch } from '../../../../lib/api/server-api';
-import { setAuthCookies } from '../../../../lib/auth/auth-cookies';
+import {
+  clearMfaChallengeCookie,
+  setAuthCookies,
+  setMfaChallengeCookie,
+} from '../../../../lib/auth/auth-cookies';
+
+function isMfaRequired(
+  data: LoginApiData,
+): data is MfaRequiredApiData {
+  return (
+    'mfaRequired' in data &&
+    data.mfaRequired === true
+  );
+}
 
 export async function POST(
   request: Request,
@@ -22,8 +37,7 @@ export async function POST(
         statusCode: 400,
         message:
           'Request body must be valid JSON',
-        error:
-          'Bad Request',
+        error: 'Bad Request',
       },
       {
         status: 400,
@@ -60,15 +74,47 @@ export async function POST(
     const result =
       payload as ApiEnvelope<LoginApiData>;
 
+    if (
+      isMfaRequired(
+        result.data,
+      )
+    ) {
+      await setMfaChallengeCookie(
+        result.data.challengeToken,
+      );
+
+      return NextResponse.json(
+        {
+          data: {
+            mfaRequired:
+              true,
+          },
+          meta:
+            result.meta,
+          message:
+            result.message,
+        },
+        {
+          status:
+            response.status,
+        },
+      );
+    }
+
+    const login =
+      result.data as SuccessfulLoginApiData;
+
+    await clearMfaChallengeCookie();
+
     await setAuthCookies(
-      result.data.accessToken,
-      result.data.refreshToken,
+      login.accessToken,
+      login.refreshToken,
     );
 
     return NextResponse.json(
       {
         data:
-          result.data.user,
+          login.user,
         meta:
           result.meta,
         message:
@@ -84,9 +130,8 @@ export async function POST(
       {
         statusCode: 502,
         message:
-          'Authentication service is unavailable',
-        error:
-          'Bad Gateway',
+          'Google authentication service is unavailable',
+        error: 'Bad Gateway',
       },
       {
         status: 502,
