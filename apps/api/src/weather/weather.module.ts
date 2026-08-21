@@ -17,5 +17,6 @@ import { WeatherService } from './weather.service';
       useClass: OpenMeteoWeatherProvider,
     },
   ],
+  exports: [WeatherService],
 })
 export class WeatherModule {}

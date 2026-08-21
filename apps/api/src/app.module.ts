@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
+import { AiModule } from './ai/ai.module';
 import { AuthModule } from './auth/auth.module';
 import { BudgetModule } from './budget/budget.module';
 import { DatabaseModule } from './database/database.module';
@@ -31,6 +32,7 @@ import { WeatherModule } from './weather/weather.module';
     BudgetModule,
     ExpensesModule,
     WeatherModule,
+    AiModule,
   ],
 })
 export class AppModule {}

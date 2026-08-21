@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react';
 
+import { AiPlannerPanel } from '../../ai/components/ai-planner-panel';
 import { BudgetPanel } from '../../budget/components/budget-panel';
 import { ItineraryTimeline } from '../../itinerary/components/itinerary-timeline';
 import { PlacesPanel } from '../../places/components/places-panel';
@@ -45,6 +46,7 @@ type TripWorkspaceState =
 
 type WorkspaceTab =
   | 'overview'
+  | 'ai'
   | 'itinerary'
   | 'places'
   | 'weather'
@@ -404,6 +406,31 @@ function WalletIcon() {
 }
 
 
+
+function AiIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+      className="h-5 w-5"
+    >
+      <path
+        d="m12 3 1.4 4.1L17.5 8.5l-4.1 1.4L12 14l-1.4-4.1-4.1-1.4 4.1-1.4L12 3Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="m18 14 .8 2.2L21 17l-2.2.8L18 20l-.8-2.2L15 17l2.2-.8L18 14Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function WeatherIcon() {
   return (
     <svg
@@ -555,8 +582,10 @@ function NotFoundState() {
 
 function OverviewContent({
   trip,
+  onOpenAi,
 }: {
   trip: Trip;
+  onOpenAi: () => void;
 }) {
   return (
     <section className="grid gap-6 py-9 lg:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.6fr)]">
@@ -618,6 +647,36 @@ function OverviewContent({
             }
           />
         </div>
+
+        <button
+          type="button"
+          onClick={onOpenAi}
+          className="group mt-5 flex w-full items-center justify-between gap-5 rounded-[1.5rem] border border-sky-300/10 bg-[linear-gradient(135deg,rgba(125,211,252,0.06),rgba(255,255,255,0.02))] p-5 text-left transition hover:border-sky-300/20 hover:bg-sky-300/[0.065]"
+        >
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-sky-300/15 bg-sky-300/[0.07] text-sky-200">
+              <AiIcon />
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">
+                Meridian AI
+              </p>
+
+              <p className="mt-1 text-sm font-semibold text-white">
+                Build a context-aware journey proposal
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Use your itinerary, saved places, budget and weather without overwriting anything automatically.
+              </p>
+            </div>
+          </div>
+
+          <span className="hidden text-sm font-semibold text-sky-200 transition group-hover:translate-x-1 sm:block">
+            Open AI →
+          </span>
+        </button>
 
         <div className="mt-8 overflow-hidden rounded-[1.75rem] border border-white/[0.07] bg-white/[0.025]">
           <div className="flex items-center justify-between border-b border-white/[0.07] px-6 py-5">
@@ -978,6 +1037,20 @@ export function TripWorkspace({
         <WorkspaceTabButton
           active={
             activeTab ===
+            'ai'
+          }
+          onClick={() =>
+            setActiveTab(
+              'ai',
+            )
+          }
+        >
+          Meridian AI
+        </WorkspaceTabButton>
+
+        <WorkspaceTabButton
+          active={
+            activeTab ===
             'itinerary'
           }
           onClick={() =>
@@ -1036,6 +1109,29 @@ export function TripWorkspace({
         'overview' && (
         <OverviewContent
           trip={trip}
+          onOpenAi={() =>
+            setActiveTab(
+              'ai',
+            )
+          }
+        />
+      )}
+
+      {activeTab ===
+        'ai' && (
+        <AiPlannerPanel
+          tripId={trip.id}
+          destination={
+            trip.destination
+          }
+          currency={
+            trip.currency
+          }
+          onOpenItinerary={() =>
+            setActiveTab(
+              'itinerary',
+            )
+          }
         />
       )}
 
