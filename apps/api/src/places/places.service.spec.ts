@@ -57,7 +57,7 @@ type PlaceMutationMock = (args: unknown) => Promise<{
   count: number;
 }>;
 
-type FindOwnedTripMock = (
+type FindTripAccessMock = (
   ownerId: string,
   tripId: string,
 ) => Promise<{
@@ -77,7 +77,9 @@ describe('PlacesService', () => {
 
   let placeDeleteMany: jest.Mock<PlaceMutationMock>;
 
-  let findOwnedTripOrThrow: jest.Mock<FindOwnedTripMock>;
+  let findAccessibleTripOrThrow: jest.Mock<FindTripAccessMock>;
+
+  let findEditableTripOrThrow: jest.Mock<FindTripAccessMock>;
 
   beforeEach(() => {
     placeCreate = jest.fn<PlaceCreateMock>();
@@ -90,7 +92,17 @@ describe('PlacesService', () => {
 
     placeDeleteMany = jest.fn<PlaceMutationMock>();
 
-    findOwnedTripOrThrow = jest.fn<FindOwnedTripMock>();
+    findAccessibleTripOrThrow = jest.fn<FindTripAccessMock>();
+
+    findEditableTripOrThrow = jest.fn<FindTripAccessMock>();
+
+    findAccessibleTripOrThrow.mockResolvedValue({
+      id: TRIP_ID,
+    });
+
+    findEditableTripOrThrow.mockResolvedValue({
+      id: TRIP_ID,
+    });
 
     const prisma = {
       place: {
@@ -103,15 +115,16 @@ describe('PlacesService', () => {
     } as unknown as PrismaService;
 
     const tripsService = {
-      findOwnedTripOrThrow,
+      findAccessibleTripOrThrow,
+      findEditableTripOrThrow,
     } as unknown as TripsService;
 
     service = new PlacesService(prisma, tripsService);
   });
 
   describe('create', () => {
-    it('creates and normalizes an owned place', async () => {
-      findOwnedTripOrThrow.mockResolvedValue({
+    it('creates and normalizes an editable trip place', async () => {
+      findEditableTripOrThrow.mockResolvedValue({
         id: TRIP_ID,
       });
 
@@ -133,7 +146,7 @@ describe('PlacesService', () => {
         website: '  https://www.meijijingu.or.jp/  ',
       });
 
-      expect(findOwnedTripOrThrow).toHaveBeenCalledWith(OWNER_ID, TRIP_ID);
+      expect(findEditableTripOrThrow).toHaveBeenCalledWith(OWNER_ID, TRIP_ID);
 
       expect(placeCreate).toHaveBeenCalledWith({
         data: {
@@ -159,7 +172,7 @@ describe('PlacesService', () => {
     });
 
     it('defaults category to OTHER and allows a place without coordinates', async () => {
-      findOwnedTripOrThrow.mockResolvedValue({
+      findEditableTripOrThrow.mockResolvedValue({
         id: TRIP_ID,
       });
 
@@ -190,7 +203,7 @@ describe('PlacesService', () => {
     });
 
     it('rejects incomplete coordinates', async () => {
-      findOwnedTripOrThrow.mockResolvedValue({
+      findEditableTripOrThrow.mockResolvedValue({
         id: TRIP_ID,
       });
 
@@ -206,7 +219,7 @@ describe('PlacesService', () => {
     });
 
     it('rejects out-of-range latitude', async () => {
-      findOwnedTripOrThrow.mockResolvedValue({
+      findEditableTripOrThrow.mockResolvedValue({
         id: TRIP_ID,
       });
 
@@ -224,7 +237,7 @@ describe('PlacesService', () => {
     });
 
     it('rejects out-of-range longitude', async () => {
-      findOwnedTripOrThrow.mockResolvedValue({
+      findEditableTripOrThrow.mockResolvedValue({
         id: TRIP_ID,
       });
 
@@ -243,8 +256,8 @@ describe('PlacesService', () => {
   });
 
   describe('findAllOwned', () => {
-    it('checks trip ownership and lists trip places', async () => {
-      findOwnedTripOrThrow.mockResolvedValue({
+    it('checks trip access and lists trip places', async () => {
+      findAccessibleTripOrThrow.mockResolvedValue({
         id: TRIP_ID,
       });
 
@@ -252,7 +265,7 @@ describe('PlacesService', () => {
 
       const result = await service.findAllOwned(OWNER_ID, TRIP_ID);
 
-      expect(findOwnedTripOrThrow).toHaveBeenCalledWith(OWNER_ID, TRIP_ID);
+      expect(findAccessibleTripOrThrow).toHaveBeenCalledWith(OWNER_ID, TRIP_ID);
 
       expect(placeFindMany).toHaveBeenCalledWith({
         where: {
@@ -274,27 +287,24 @@ describe('PlacesService', () => {
   });
 
   describe('findOwnedPlaceOrThrow', () => {
-    it('returns an owned place', async () => {
+    it('returns a place from an accessible trip', async () => {
       placeFindFirst.mockResolvedValue(basePlace);
 
       const result = await service.findOwnedPlaceOrThrow(OWNER_ID, TRIP_ID, PLACE_ID);
 
+      expect(findAccessibleTripOrThrow).toHaveBeenCalledWith(OWNER_ID, TRIP_ID);
+
       expect(placeFindFirst).toHaveBeenCalledWith({
         where: {
           id: PLACE_ID,
-
           tripId: TRIP_ID,
-
-          trip: {
-            ownerId: OWNER_ID,
-          },
         },
       });
 
       expect(result.id).toBe(PLACE_ID);
     });
 
-    it('returns 404 for a place that is not owned', async () => {
+    it('returns 404 for a missing place', async () => {
       placeFindFirst.mockResolvedValue(null);
 
       await expect(
@@ -456,7 +466,7 @@ describe('PlacesService', () => {
   });
 
   describe('remove', () => {
-    it('deletes an owned place', async () => {
+    it('deletes a place from an editable trip', async () => {
       placeFindFirst.mockResolvedValue(basePlace);
 
       placeDeleteMany.mockResolvedValue({

@@ -93,8 +93,12 @@ function createPrismaMock() {
 }
 
 function createTripsServiceMock() {
+  const findTripOrThrow = jest.fn<(ownerId: string, tripId: string) => Promise<TripRecord>>();
+
   return {
-    findOwnedTripOrThrow: jest.fn<(ownerId: string, tripId: string) => Promise<TripRecord>>(),
+    findOwnedTripOrThrow: findTripOrThrow,
+    findAccessibleTripOrThrow: findTripOrThrow,
+    findEditableTripOrThrow: findTripOrThrow,
   };
 }
 

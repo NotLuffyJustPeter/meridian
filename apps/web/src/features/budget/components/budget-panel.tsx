@@ -23,6 +23,7 @@ import {
 
 type BudgetPanelProps = {
   tripId: string;
+  canEdit: boolean;
 };
 
 type LoadState =
@@ -851,7 +852,10 @@ function DeleteExpenseDialog({
   );
 }
 
-export function BudgetPanel({ tripId }: BudgetPanelProps) {
+export function BudgetPanel({
+  tripId,
+  canEdit,
+}: BudgetPanelProps) {
   const [state, setState] = useState<LoadState>({
     status: 'loading',
     overview: null,
@@ -1219,20 +1223,22 @@ export function BudgetPanel({ tripId }: BudgetPanelProps) {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            setExpenseError(null);
-            setExpenseForm({
-              ...EMPTY_EXPENSE_FORM,
-              spentAt: toDateTimeLocal(new Date()),
-            });
-            setShowExpenseForm(true);
-          }}
-          className="inline-flex w-full items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 sm:w-auto"
-        >
-          + Add expense
-        </button>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => {
+              setExpenseError(null);
+              setExpenseForm({
+                ...EMPTY_EXPENSE_FORM,
+                spentAt: toDateTimeLocal(new Date()),
+              });
+              setShowExpenseForm(true);
+            }}
+            className="inline-flex w-full items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 sm:w-auto"
+          >
+            + Add expense
+          </button>
+        )}
       </div>
 
       <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -1325,16 +1331,18 @@ export function BudgetPanel({ tripId }: BudgetPanelProps) {
                       <p className="text-sm font-semibold text-white">
                         {formatMoney(expense.amount, currency)}
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDeleteError(null);
-                          setDeleteTarget(expense);
-                        }}
-                        className="mt-1 text-[11px] text-slate-600 opacity-100 transition hover:text-rose-300 sm:opacity-0 sm:group-hover:opacity-100"
-                      >
-                        Delete
-                      </button>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDeleteError(null);
+                            setDeleteTarget(expense);
+                          }}
+                          className="mt-1 text-[11px] text-slate-600 opacity-100 transition hover:text-rose-300 sm:opacity-0 sm:group-hover:opacity-100"
+                        >
+                          Delete
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1378,39 +1386,47 @@ export function BudgetPanel({ tripId }: BudgetPanelProps) {
                         </p>
                       </div>
 
-                      <div className="flex min-w-0 gap-2 lg:w-[17rem]">
-                        <input
-                          value={limitDrafts[category.category]}
-                          onChange={(event) => {
-                            const value = event.target.value;
-                            setLimitDrafts((current) => ({
-                              ...current,
-                              [category.category]: value,
-                            }));
-                          }}
-                          inputMode="decimal"
-                          placeholder="Limit"
-                          className="min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-black/20 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-sky-300/40"
-                        />
-                        <button
-                          type="button"
-                          disabled={savingLimit === category.category}
-                          onClick={() => void saveCategoryLimit(category.category)}
-                          className="rounded-xl border border-white/[0.08] bg-white/[0.05] px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/[0.09] disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {savingLimit === category.category ? '...' : 'Save'}
-                        </button>
-                        {category.limitAmount !== null && (
+                      {canEdit ? (
+                        <div className="flex min-w-0 gap-2 lg:w-[17rem]">
+                          <input
+                            value={limitDrafts[category.category]}
+                            onChange={(event) => {
+                              const value = event.target.value;
+                              setLimitDrafts((current) => ({
+                                ...current,
+                                [category.category]: value,
+                              }));
+                            }}
+                            inputMode="decimal"
+                            placeholder="Limit"
+                            className="min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-black/20 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-sky-300/40"
+                          />
                           <button
                             type="button"
                             disabled={savingLimit === category.category}
-                            onClick={() => void clearCategoryLimit(category.category)}
-                            className="rounded-xl border border-white/[0.07] px-2.5 py-2 text-[11px] text-slate-500 transition hover:border-rose-300/10 hover:text-rose-200 disabled:opacity-40"
+                            onClick={() => void saveCategoryLimit(category.category)}
+                            className="rounded-xl border border-white/[0.08] bg-white/[0.05] px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/[0.09] disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            Clear
+                            {savingLimit === category.category ? '...' : 'Save'}
                           </button>
-                        )}
-                      </div>
+                          {category.limitAmount !== null && (
+                            <button
+                              type="button"
+                              disabled={savingLimit === category.category}
+                              onClick={() => void clearCategoryLimit(category.category)}
+                              className="rounded-xl border border-white/[0.07] px-2.5 py-2 text-[11px] text-slate-500 transition hover:border-rose-300/10 hover:text-rose-200 disabled:opacity-40"
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="shrink-0 rounded-xl border border-white/[0.07] bg-black/10 px-3 py-2 text-xs text-slate-400 lg:w-[12rem] lg:text-right">
+                          {category.limitAmount === null
+                            ? 'No limit'
+                            : formatMoney(category.limitAmount, currency)}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1438,26 +1454,44 @@ export function BudgetPanel({ tripId }: BudgetPanelProps) {
             </p>
 
             <div className="mt-5">
-              <label className="text-xs font-medium text-slate-400">Total budget</label>
-              <div className="mt-2 flex flex-col gap-2 sm:flex-row xl:flex-col 2xl:flex-row">
-                <input
-                  value={budgetAmount}
-                  onChange={(event) => setBudgetAmount(event.target.value)}
-                  inputMode="decimal"
-                  placeholder="35000"
-                  className="min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-black/20 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-sky-300/40"
-                />
-                <button
-                  type="button"
-                  disabled={savingBudget}
-                  onClick={() => void saveBudget()}
-                  className="rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {savingBudget ? 'Saving' : overview.configured ? 'Update' : 'Set'}
-                </button>
-              </div>
-              {budgetError && (
-                <p className="mt-3 text-xs leading-5 text-rose-200">{budgetError}</p>
+              <label className="text-xs font-medium text-slate-400">
+                Total budget
+              </label>
+
+              {canEdit ? (
+                <>
+                  <div className="mt-2 flex flex-col gap-2 sm:flex-row xl:flex-col 2xl:flex-row">
+                    <input
+                      value={budgetAmount}
+                      onChange={(event) => setBudgetAmount(event.target.value)}
+                      inputMode="decimal"
+                      placeholder="35000"
+                      className="min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-black/20 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-sky-300/40"
+                    />
+                    <button
+                      type="button"
+                      disabled={savingBudget}
+                      onClick={() => void saveBudget()}
+                      className="rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {savingBudget ? 'Saving' : overview.configured ? 'Update' : 'Set'}
+                    </button>
+                  </div>
+                  {budgetError && (
+                    <p className="mt-3 text-xs leading-5 text-rose-200">
+                      {budgetError}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <div className="mt-2 rounded-xl border border-white/[0.07] bg-black/10 px-4 py-3">
+                  <p className="text-sm font-semibold text-white">
+                    {formatMoney(totals.budgetAmount, currency)}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Read-only budget access
+                  </p>
+                </div>
               )}
             </div>
           </div>
@@ -1484,7 +1518,7 @@ export function BudgetPanel({ tripId }: BudgetPanelProps) {
         </aside>
       </div>
 
-      {showExpenseForm && (
+      {canEdit && showExpenseForm && (
         <ExpenseDialog
           form={expenseForm}
           currency={currency}
@@ -1501,7 +1535,7 @@ export function BudgetPanel({ tripId }: BudgetPanelProps) {
         />
       )}
 
-      {deleteTarget && (
+      {canEdit && deleteTarget && (
         <DeleteExpenseDialog
           expense={deleteTarget}
           currency={currency}

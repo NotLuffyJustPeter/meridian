@@ -70,7 +70,18 @@ describe('ItineraryService place links', () => {
       },
     } as unknown as PrismaService;
 
-    service = new ItineraryService(prisma, {} as TripsService);
+    const findEditableTripOrThrow =
+      jest.fn<(ownerId: string, tripId: string) => Promise<{ id: string }>>();
+
+    findEditableTripOrThrow.mockResolvedValue({
+      id: TRIP_ID,
+    });
+
+    const tripsService = {
+      findEditableTripOrThrow,
+    } as unknown as TripsService;
+
+    service = new ItineraryService(prisma, tripsService);
   });
 
   it('links an activity only to a place from the same trip', async () => {

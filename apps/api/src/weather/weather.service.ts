@@ -23,7 +23,7 @@ export class WeatherService {
   ) {}
 
   async getTripWeather(ownerId: string, tripId: string): Promise<TripWeather> {
-    const trip = await this.tripsService.findOwnedTripOrThrow(ownerId, tripId);
+    const trip = await this.tripsService.findAccessibleTripOrThrow(ownerId, tripId);
 
     const requestedDates = this.buildTripDates(trip.startDate, trip.endDate);
 

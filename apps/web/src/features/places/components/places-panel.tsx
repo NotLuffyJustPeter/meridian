@@ -50,6 +50,7 @@ import type {
 
 interface PlacesPanelProps {
   tripId: string;
+  canEdit: boolean;
 }
 
 type PlacesState =
@@ -757,6 +758,7 @@ function CategoryBadge({
 function PlaceCard({
   place,
   selected,
+  canEdit,
   cardRef,
   onSelect,
   onEdit,
@@ -764,6 +766,7 @@ function PlaceCard({
 }: {
   place: Place;
   selected: boolean;
+  canEdit: boolean;
   cardRef: (
     element:
       HTMLElement | null,
@@ -851,43 +854,45 @@ function PlaceCard({
             )}
           </div>
 
-          <div className="flex shrink-0 gap-1.5 opacity-70 transition group-hover:opacity-100">
-            <button
-              type="button"
-              onClick={(
-                event,
-              ) => {
-                event.stopPropagation();
-                onEdit();
-              }}
-              aria-label={`Edit ${place.name}`}
-              title="Edit place"
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.025] text-white/45 transition hover:border-white/[0.14] hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/20"
-            >
-              <Pencil
-                className="h-3.5 w-3.5"
-                strokeWidth={1.8}
-              />
-            </button>
+          {canEdit && (
+            <div className="flex shrink-0 gap-1.5 opacity-70 transition group-hover:opacity-100">
+              <button
+                type="button"
+                onClick={(
+                  event,
+                ) => {
+                  event.stopPropagation();
+                  onEdit();
+                }}
+                aria-label={`Edit ${place.name}`}
+                title="Edit place"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.025] text-white/45 transition hover:border-white/[0.14] hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/20"
+              >
+                <Pencil
+                  className="h-3.5 w-3.5"
+                  strokeWidth={1.8}
+                />
+              </button>
 
-            <button
-              type="button"
-              onClick={(
-                event,
-              ) => {
-                event.stopPropagation();
-                onDelete();
-              }}
-              aria-label={`Delete ${place.name}`}
-              title="Delete place"
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-rose-300/10 bg-rose-300/[0.025] text-rose-200/45 transition hover:border-rose-300/20 hover:bg-rose-300/[0.08] hover:text-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/20"
-            >
-              <Trash2
-                className="h-3.5 w-3.5"
-                strokeWidth={1.8}
-              />
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={(
+                  event,
+                ) => {
+                  event.stopPropagation();
+                  onDelete();
+                }}
+                aria-label={`Delete ${place.name}`}
+                title="Delete place"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-rose-300/10 bg-rose-300/[0.025] text-rose-200/45 transition hover:border-rose-300/20 hover:bg-rose-300/[0.08] hover:text-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/20"
+              >
+                <Trash2
+                  className="h-3.5 w-3.5"
+                  strokeWidth={1.8}
+                />
+              </button>
+            </div>
+          )}
         </div>
 
         {(coordinates ||
@@ -996,8 +1001,10 @@ function LoadingState() {
 }
 
 function EmptyPlaces({
+  canEdit,
   onAdd,
 }: {
+  canEdit: boolean;
   onAdd: () => void;
 }) {
   return (
@@ -1027,18 +1034,24 @@ function EmptyPlaces({
         your journey.
       </p>
 
-      <button
-        type="button"
-        onClick={onAdd}
-        className="relative mt-7 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/30"
-      >
-        <Plus
-          className="h-4 w-4"
-          strokeWidth={1.9}
-        />
+      {canEdit ? (
+        <button
+          type="button"
+          onClick={onAdd}
+          className="relative mt-7 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/30"
+        >
+          <Plus
+            className="h-4 w-4"
+            strokeWidth={1.9}
+          />
 
-        Add first place
-      </button>
+          Add first place
+        </button>
+      ) : (
+        <p className="relative mt-7 text-xs font-medium text-slate-500">
+          An owner or editor can add places to this journey.
+        </p>
+      )}
     </div>
   );
 }
@@ -2172,6 +2185,7 @@ function DeleteDialog({
 
 export function PlacesPanel({
   tripId,
+  canEdit,
 }: PlacesPanelProps) {
   const [
     state,
@@ -2863,17 +2877,19 @@ export function PlacesPanel({
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={openCreate}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/30"
-          >
-            <Plus
-              className="h-4 w-4"
-            />
+          {canEdit && (
+            <button
+              type="button"
+              onClick={openCreate}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/30"
+            >
+              <Plus
+                className="h-4 w-4"
+              />
 
-            Add place
-          </button>
+              Add place
+            </button>
+          )}
         </div>
 
         {totalPlaces > 0 && (
@@ -2912,6 +2928,7 @@ export function PlacesPanel({
 
         {totalPlaces === 0 ? (
           <EmptyPlaces
+            canEdit={canEdit}
             onAdd={openCreate}
           />
         ) : (
@@ -3148,6 +3165,7 @@ export function PlacesPanel({
                             place={
                               place
                             }
+                            canEdit={canEdit}
                             selected={
                               selectedPlaceId ===
                               place.id
@@ -3336,7 +3354,7 @@ export function PlacesPanel({
         )}
       </section>
 
-      {dialog && (
+      {canEdit && dialog && (
         <PlaceDialog
           dialog={dialog}
           form={form}
@@ -3354,7 +3372,7 @@ export function PlacesPanel({
         />
       )}
 
-      {deleteTarget && (
+      {canEdit && deleteTarget && (
         <DeleteDialog
           place={
             deleteTarget

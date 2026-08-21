@@ -13,7 +13,7 @@ export class PlacesService {
   ) {}
 
   async create(ownerId: string, tripId: string, dto: CreatePlaceDto) {
-    await this.tripsService.findOwnedTripOrThrow(ownerId, tripId);
+    await this.tripsService.findEditableTripOrThrow(ownerId, tripId);
 
     const name = dto.name.trim();
 
@@ -71,7 +71,7 @@ export class PlacesService {
   }
 
   async findAllOwned(ownerId: string, tripId: string) {
-    await this.tripsService.findOwnedTripOrThrow(ownerId, tripId);
+    await this.tripsService.findAccessibleTripOrThrow(ownerId, tripId);
 
     return this.prisma.place.findMany({
       where: {
@@ -90,22 +90,9 @@ export class PlacesService {
   }
 
   async findOwnedPlaceOrThrow(ownerId: string, tripId: string, placeId: string) {
-    const place = await this.prisma.place.findFirst({
-      where: {
-        id: placeId,
-        tripId,
+    await this.tripsService.findAccessibleTripOrThrow(ownerId, tripId);
 
-        trip: {
-          ownerId,
-        },
-      },
-    });
-
-    if (!place) {
-      throw new NotFoundException('Place not found');
-    }
-
-    return place;
+    return this.findPlaceInTripOrThrow(tripId, placeId);
   }
 
   async update(ownerId: string, tripId: string, placeId: string, dto: UpdatePlaceDto) {
@@ -124,7 +111,9 @@ export class PlacesService {
       throw new BadRequestException('At least one field must be provided');
     }
 
-    const existing = await this.findOwnedPlaceOrThrow(ownerId, tripId, placeId);
+    await this.tripsService.findEditableTripOrThrow(ownerId, tripId);
+
+    const existing = await this.findPlaceInTripOrThrow(tripId, placeId);
 
     const name = dto.name !== undefined ? dto.name.trim() : undefined;
 
@@ -199,11 +188,13 @@ export class PlacesService {
       throw new NotFoundException('Place not found');
     }
 
-    return this.findOwnedPlaceOrThrow(ownerId, tripId, placeId);
+    return this.findPlaceInTripOrThrow(tripId, placeId);
   }
 
   async remove(ownerId: string, tripId: string, placeId: string): Promise<void> {
-    await this.findOwnedPlaceOrThrow(ownerId, tripId, placeId);
+    await this.tripsService.findEditableTripOrThrow(ownerId, tripId);
+
+    await this.findPlaceInTripOrThrow(tripId, placeId);
 
     const result = await this.prisma.place.deleteMany({
       where: {
@@ -215,6 +206,21 @@ export class PlacesService {
     if (result.count === 0) {
       throw new NotFoundException('Place not found');
     }
+  }
+
+  private async findPlaceInTripOrThrow(tripId: string, placeId: string) {
+    const place = await this.prisma.place.findFirst({
+      where: {
+        id: placeId,
+        tripId,
+      },
+    });
+
+    if (!place) {
+      throw new NotFoundException('Place not found');
+    }
+
+    return place;
   }
 
   private normalizeNullableText(value: string | null | undefined): string | null | undefined {

@@ -24,7 +24,7 @@ export class JourneyContextService {
   ) {}
 
   async build(ownerId: string, tripId: string): Promise<JourneyContext> {
-    await this.tripsService.findOwnedTripOrThrow(ownerId, tripId);
+    await this.tripsService.findAccessibleTripOrThrow(ownerId, tripId);
 
     const trip = await this.prisma.trip.findUnique({
       where: {

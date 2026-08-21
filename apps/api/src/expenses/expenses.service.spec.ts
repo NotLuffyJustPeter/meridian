@@ -49,7 +49,7 @@ type ExpenseUpdateMock = (args: unknown) => Promise<ExpenseRecord>;
 
 type ExpenseDeleteMock = (args: unknown) => Promise<ExpenseRecord>;
 
-type FindOwnedTripMock = (ownerId: string, tripId: string) => Promise<TripRecord>;
+type FindTripAccessMock = (ownerId: string, tripId: string) => Promise<TripRecord>;
 
 function decimal(value: string): DecimalLike {
   return {
@@ -85,7 +85,9 @@ describe('ExpensesService', () => {
 
   let expenseDelete: jest.Mock<ExpenseDeleteMock>;
 
-  let findOwnedTripOrThrow: jest.Mock<FindOwnedTripMock>;
+  let findAccessibleTripOrThrow: jest.Mock<FindTripAccessMock>;
+
+  let findEditableTripOrThrow: jest.Mock<FindTripAccessMock>;
 
   beforeEach(() => {
     expenseCreate = jest.fn<ExpenseCreateMock>();
@@ -98,7 +100,9 @@ describe('ExpensesService', () => {
 
     expenseDelete = jest.fn<ExpenseDeleteMock>();
 
-    findOwnedTripOrThrow = jest.fn<FindOwnedTripMock>();
+    findAccessibleTripOrThrow = jest.fn<FindTripAccessMock>();
+
+    findEditableTripOrThrow = jest.fn<FindTripAccessMock>();
 
     const prisma = {
       expense: {
@@ -111,12 +115,18 @@ describe('ExpensesService', () => {
     } as unknown as PrismaService;
 
     const tripsService = {
-      findOwnedTripOrThrow,
+      findAccessibleTripOrThrow,
+      findEditableTripOrThrow,
     } as unknown as TripsService;
 
     service = new ExpensesService(prisma, tripsService);
 
-    findOwnedTripOrThrow.mockResolvedValue({
+    findAccessibleTripOrThrow.mockResolvedValue({
+      id: TRIP_ID,
+      currency: 'EUR',
+    });
+
+    findEditableTripOrThrow.mockResolvedValue({
       id: TRIP_ID,
       currency: 'EUR',
     });
@@ -282,8 +292,8 @@ describe('ExpensesService', () => {
     expect(expenseCreate).not.toHaveBeenCalled();
   });
 
-  it('hides expenses when trip ownership fails', async () => {
-    findOwnedTripOrThrow.mockRejectedValue(new NotFoundException('Trip not found'));
+  it('hides expenses when trip access fails', async () => {
+    findAccessibleTripOrThrow.mockRejectedValue(new NotFoundException('Trip not found'));
 
     await expect(service.findOne(OWNER_ID, TRIP_ID, EXPENSE_ID)).rejects.toBeInstanceOf(
       NotFoundException,
