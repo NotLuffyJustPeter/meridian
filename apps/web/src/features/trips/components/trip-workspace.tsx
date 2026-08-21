@@ -12,6 +12,10 @@ import {
 import { BudgetPanel } from '../../budget/components/budget-panel';
 import { ItineraryTimeline } from '../../itinerary/components/itinerary-timeline';
 import { PlacesPanel } from '../../places/components/places-panel';
+import {
+  WeatherJourneyStrip,
+  WeatherPanel,
+} from '../../weather/components/weather-panel';
 import type {
   Trip,
   TripStatus,
@@ -43,6 +47,7 @@ type WorkspaceTab =
   | 'overview'
   | 'itinerary'
   | 'places'
+  | 'weather'
   | 'budget';
 
 function isRecord(
@@ -398,6 +403,32 @@ function WalletIcon() {
   );
 }
 
+
+function WeatherIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+      className="h-5 w-5"
+    >
+      <path
+        d="M7.5 18.5h9.2a4.3 4.3 0 0 0 .7-8.5A5.8 5.8 0 0 0 6.3 8.7 4.9 4.9 0 0 0 7.5 18.5Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8 6.5 6.7 5.2M12 5V3M16 6.5l1.3-1.3"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function GlobeIcon() {
   return (
     <svg
@@ -549,7 +580,7 @@ function OverviewContent({
           </p>
         </div>
 
-        <div className="mt-7 grid gap-4 md:grid-cols-3">
+        <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <WorkspaceCard
             eyebrow="Ready"
             title="Plan itinerary"
@@ -566,6 +597,15 @@ function OverviewContent({
             description="Collect restaurants, landmarks and places worth visiting."
             icon={
               <PinIcon />
+            }
+          />
+
+          <WorkspaceCard
+            eyebrow="Live"
+            title="Check weather"
+            description="See forecast context aligned with the days of your journey."
+            icon={
+              <WeatherIcon />
             }
           />
 
@@ -966,6 +1006,20 @@ export function TripWorkspace({
         <WorkspaceTabButton
           active={
             activeTab ===
+            'weather'
+          }
+          onClick={() =>
+            setActiveTab(
+              'weather',
+            )
+          }
+        >
+          Weather
+        </WorkspaceTabButton>
+
+        <WorkspaceTabButton
+          active={
+            activeTab ===
             'budget'
           }
           onClick={() =>
@@ -988,9 +1042,15 @@ export function TripWorkspace({
       {activeTab ===
         'itinerary' && (
         <div className="py-9">
-          <ItineraryTimeline
+          <WeatherJourneyStrip
             tripId={trip.id}
           />
+
+          <div className="mt-8">
+            <ItineraryTimeline
+              tripId={trip.id}
+            />
+          </div>
         </div>
       )}
 
@@ -1001,6 +1061,13 @@ export function TripWorkspace({
             tripId={trip.id}
           />
         </div>
+      )}
+
+      {activeTab ===
+        'weather' && (
+        <WeatherPanel
+          tripId={trip.id}
+        />
       )}
 
       {activeTab ===
