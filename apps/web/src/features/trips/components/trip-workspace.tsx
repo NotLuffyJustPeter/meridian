@@ -17,6 +17,7 @@ import {
   WeatherJourneyStrip,
   WeatherPanel,
 } from '../../weather/components/weather-panel';
+import { ShareJourneyDialog } from '../../collaboration/components/share-journey-dialog';
 import type {
   Trip,
   TripStatus,
@@ -301,6 +302,39 @@ function ArrowLeftIcon() {
   );
 }
 
+function ShareIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-4 w-4">
+      <circle cx="8" cy="12" r="2.5" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="17" cy="7" r="2.5" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="17" cy="17" r="2.5" stroke="currentColor" strokeWidth="1.5" />
+      <path d="m10.2 10.8 4.5-2.6M10.2 13.2l4.5 2.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function getAccessRoleLabel(role: Trip['accessRole']): string {
+  switch (role) {
+    case 'OWNER':
+      return 'Owner';
+    case 'EDITOR':
+      return 'Editor';
+    case 'VIEWER':
+      return 'Viewer';
+  }
+}
+
+function getAccessRoleClasses(role: Trip['accessRole']): string {
+  switch (role) {
+    case 'OWNER':
+      return 'border-sky-300/20 bg-sky-300/[0.08] text-sky-100';
+    case 'EDITOR':
+      return 'border-emerald-300/20 bg-emerald-300/[0.08] text-emerald-100';
+    case 'VIEWER':
+      return 'border-white/10 bg-white/[0.04] text-slate-300';
+  }
+}
+
 function CompassIcon() {
   return (
     <svg
@@ -582,9 +616,11 @@ function NotFoundState() {
 
 function OverviewContent({
   trip,
+  canEdit,
   onOpenAi,
 }: {
   trip: Trip;
+  canEdit: boolean;
   onOpenAi: () => void;
 }) {
   return (
@@ -648,35 +684,37 @@ function OverviewContent({
           />
         </div>
 
-        <button
-          type="button"
-          onClick={onOpenAi}
-          className="group mt-5 flex w-full items-center justify-between gap-5 rounded-[1.5rem] border border-sky-300/10 bg-[linear-gradient(135deg,rgba(125,211,252,0.06),rgba(255,255,255,0.02))] p-5 text-left transition hover:border-sky-300/20 hover:bg-sky-300/[0.065]"
-        >
-          <div className="flex min-w-0 items-center gap-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-sky-300/15 bg-sky-300/[0.07] text-sky-200">
-              <AiIcon />
+        {canEdit && (
+          <button
+            type="button"
+            onClick={onOpenAi}
+            className="group mt-5 flex w-full items-center justify-between gap-5 rounded-[1.5rem] border border-sky-300/10 bg-[linear-gradient(135deg,rgba(125,211,252,0.06),rgba(255,255,255,0.02))] p-5 text-left transition hover:border-sky-300/20 hover:bg-sky-300/[0.065]"
+          >
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-sky-300/15 bg-sky-300/[0.07] text-sky-200">
+                <AiIcon />
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">
+                  Meridian AI
+                </p>
+
+                <p className="mt-1 text-sm font-semibold text-white">
+                  Build a context-aware journey proposal
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Use your itinerary, saved places, budget and weather without overwriting anything automatically.
+                </p>
+              </div>
             </div>
 
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">
-                Meridian AI
-              </p>
-
-              <p className="mt-1 text-sm font-semibold text-white">
-                Build a context-aware journey proposal
-              </p>
-
-              <p className="mt-1 text-xs leading-5 text-slate-500">
-                Use your itinerary, saved places, budget and weather without overwriting anything automatically.
-              </p>
-            </div>
-          </div>
-
-          <span className="hidden text-sm font-semibold text-sky-200 transition group-hover:translate-x-1 sm:block">
-            Open AI →
-          </span>
-        </button>
+            <span className="hidden text-sm font-semibold text-sky-200 transition group-hover:translate-x-1 sm:block">
+              Open AI →
+            </span>
+          </button>
+        )}
 
         <div className="mt-8 overflow-hidden rounded-[1.75rem] border border-white/[0.07] bg-white/[0.025]">
           <div className="flex items-center justify-between border-b border-white/[0.07] px-6 py-5">
@@ -821,6 +859,8 @@ export function TripWorkspace({
       'overview',
     );
 
+  const [shareOpen, setShareOpen] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -908,15 +948,31 @@ export function TripWorkspace({
       .toUpperCase() ||
     'M';
 
+  const canEdit =
+    trip.accessRole !== 'VIEWER';
+
   return (
     <div>
-      <Link
-        href="/dashboard"
-        className="inline-flex items-center gap-2 text-sm text-slate-500 transition hover:text-white"
-      >
-        <ArrowLeftIcon />
-        All journeys
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 text-sm text-slate-500 transition hover:text-white"
+        >
+          <ArrowLeftIcon />
+          All journeys
+        </Link>
+
+        {trip.accessRole === 'OWNER' && (
+          <button
+            type="button"
+            onClick={() => setShareOpen(true)}
+            className="inline-flex items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.035] px-3.5 py-2 text-sm font-medium text-slate-200 transition hover:border-sky-300/20 hover:bg-sky-300/[0.06] hover:text-white"
+          >
+            <ShareIcon />
+            Share journey
+          </button>
+        )}
+      </div>
 
       <section className="relative mt-8 overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[linear-gradient(135deg,#0b2534_0%,#103345_48%,#0a1722_100%)]">
         <div className="pointer-events-none absolute -right-20 -top-36 h-80 w-80 rounded-full border border-sky-200/10 bg-sky-300/[0.04]" />
@@ -947,6 +1003,15 @@ export function TripWorkspace({
               {formatDate(
                 trip.endDate,
               )}
+            </span>
+
+            <span
+              className={[
+                'inline-flex rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em]',
+                getAccessRoleClasses(trip.accessRole),
+              ].join(' ')}
+            >
+              {getAccessRoleLabel(trip.accessRole)}
             </span>
           </div>
 
@@ -1016,6 +1081,22 @@ export function TripWorkspace({
         </div>
       </section>
 
+      {trip.accessRole === 'VIEWER' && (
+        <div className="mt-6 flex flex-col gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.025] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold text-slate-200">
+              Read-only journey access
+            </p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              You can explore this workspace and follow live changes, but editing is reserved for owners and editors.
+            </p>
+          </div>
+          <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
+            Viewer
+          </span>
+        </div>
+      )}
+
       <nav
         aria-label="Journey workspace"
         className="mt-10 flex gap-1 overflow-x-auto border-b border-white/[0.07]"
@@ -1034,19 +1115,21 @@ export function TripWorkspace({
           Overview
         </WorkspaceTabButton>
 
-        <WorkspaceTabButton
-          active={
-            activeTab ===
-            'ai'
-          }
-          onClick={() =>
-            setActiveTab(
-              'ai',
-            )
-          }
-        >
-          Meridian AI
-        </WorkspaceTabButton>
+        {canEdit && (
+          <WorkspaceTabButton
+            active={
+              activeTab ===
+              'ai'
+            }
+            onClick={() =>
+              setActiveTab(
+                'ai',
+              )
+            }
+          >
+            Meridian AI
+          </WorkspaceTabButton>
+        )}
 
         <WorkspaceTabButton
           active={
@@ -1109,6 +1192,7 @@ export function TripWorkspace({
         'overview' && (
         <OverviewContent
           trip={trip}
+          canEdit={canEdit}
           onOpenAi={() =>
             setActiveTab(
               'ai',
@@ -1117,8 +1201,9 @@ export function TripWorkspace({
         />
       )}
 
-      {activeTab ===
-        'ai' && (
+      {canEdit &&
+        activeTab ===
+          'ai' && (
         <AiPlannerPanel
           tripId={trip.id}
           destination={
@@ -1145,6 +1230,7 @@ export function TripWorkspace({
           <div className="mt-8">
             <ItineraryTimeline
               tripId={trip.id}
+              canEdit={canEdit}
             />
           </div>
         </div>
@@ -1155,6 +1241,7 @@ export function TripWorkspace({
         <div className="py-9">
           <PlacesPanel
             tripId={trip.id}
+            canEdit={canEdit}
           />
         </div>
       )}
@@ -1170,6 +1257,15 @@ export function TripWorkspace({
         'budget' && (
         <BudgetPanel
           tripId={trip.id}
+          canEdit={canEdit}
+        />
+      )}
+
+      {shareOpen && (
+        <ShareJourneyDialog
+          tripId={trip.id}
+          tripName={trip.name}
+          onClose={() => setShareOpen(false)}
         />
       )}
     </div>

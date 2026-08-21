@@ -20,7 +20,6 @@ import {
 } from 'react';
 
 import type {
-  Activity,
   Itinerary,
 } from '../../itinerary/types/itinerary.types';
 import type {
@@ -808,12 +807,16 @@ export function AiPlannerPanel({
   ] =
     useState(true);
 
-  const recommendations =
-    generation.status ===
-    'success'
-      ? generation.data
-          .recommendations
-      : [];
+const recommendations =
+  useMemo(
+    () =>
+      generation.status ===
+      'success'
+        ? generation.data
+            .recommendations
+        : [],
+    [generation],
+  );
 
   const selectedRecommendations =
     useMemo(

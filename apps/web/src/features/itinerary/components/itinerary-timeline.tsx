@@ -20,6 +20,7 @@ import { useTripRealtime } from '../../realtime/hooks/use-trip-realtime';
 
 interface ItineraryTimelineProps {
   tripId: string;
+  canEdit: boolean;
 }
 
 type TimelineState =
@@ -538,6 +539,7 @@ function ActivityCard({
   activity,
   isFirst,
   isLast,
+  canEdit,
   reordering,
   onMoveUp,
   onMoveDown,
@@ -547,6 +549,7 @@ function ActivityCard({
   activity: Activity;
   isFirst: boolean;
   isLast: boolean;
+  canEdit: boolean;
   reordering: boolean;
   onMoveUp: () => void;
   onMoveDown: () => void;
@@ -600,47 +603,51 @@ function ActivityCard({
               {category.label}
             </span>
 
-            <div className="flex items-center gap-1">
-              <ReorderButton
-                direction="up"
-                disabled={
-                  isFirst ||
-                  reordering
-                }
-                onClick={
-                  onMoveUp
-                }
-              />
+            {canEdit && (
+              <>
+                <div className="flex items-center gap-1">
+                  <ReorderButton
+                    direction="up"
+                    disabled={
+                      isFirst ||
+                      reordering
+                    }
+                    onClick={
+                      onMoveUp
+                    }
+                  />
 
-              <ReorderButton
-                direction="down"
-                disabled={
-                  isLast ||
-                  reordering
-                }
-                onClick={
-                  onMoveDown
-                }
-              />
-            </div>
+                  <ReorderButton
+                    direction="down"
+                    disabled={
+                      isLast ||
+                      reordering
+                    }
+                    onClick={
+                      onMoveDown
+                    }
+                  />
+                </div>
 
-            <button
-              type="button"
-              onClick={onEdit}
-              disabled={reordering}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.035] px-2.5 py-1.5 text-[11px] font-medium text-white/55 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-40"
-            >
-              Edit
-            </button>
+                <button
+                  type="button"
+                  onClick={onEdit}
+                  disabled={reordering}
+                  className="rounded-lg border border-white/[0.08] bg-white/[0.035] px-2.5 py-1.5 text-[11px] font-medium text-white/55 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-40"
+                >
+                  Edit
+                </button>
 
-            <button
-              type="button"
-              onClick={onDelete}
-              disabled={reordering}
-              className="rounded-lg border border-rose-300/10 bg-rose-300/[0.035] px-2.5 py-1.5 text-[11px] font-medium text-rose-200/60 transition hover:bg-rose-300/[0.08] hover:text-rose-100 disabled:opacity-40"
-            >
-              Delete
-            </button>
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  disabled={reordering}
+                  className="rounded-lg border border-rose-300/10 bg-rose-300/[0.035] px-2.5 py-1.5 text-[11px] font-medium text-rose-200/60 transition hover:bg-rose-300/[0.08] hover:text-rose-100 disabled:opacity-40"
+                >
+                  Delete
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -667,37 +674,47 @@ function ActivityCard({
 }
 
 function EmptyDay({
+  canEdit,
   onAdd,
 }: {
+  canEdit: boolean;
   onAdd: () => void;
 }) {
   return (
     <div className="rounded-3xl border border-dashed border-white/10 bg-white/[0.02] px-6 py-14 text-center">
-      <button
-        type="button"
-        onClick={onAdd}
-        className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-lg text-white/50 transition hover:bg-white/[0.08] hover:text-white"
-      >
-        +
-      </button>
+      {canEdit ? (
+        <button
+          type="button"
+          onClick={onAdd}
+          className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-lg text-white/50 transition hover:bg-white/[0.08] hover:text-white"
+        >
+          +
+        </button>
+      ) : (
+        <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.025] text-sm text-white/30">
+          ·
+        </div>
+      )}
 
       <h4 className="mt-4 text-base font-medium text-white/80">
         Nothing planned yet
       </h4>
 
       <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-white/40">
-        This day is still open.
-        Add the first activity
-        whenever you&apos;re ready.
+        {canEdit
+          ? 'This day is still open. Add the first activity whenever you\'re ready.'
+          : 'This day is still open. An owner or editor can add the first activity.'}
       </p>
 
-      <button
-        type="button"
-        onClick={onAdd}
-        className="mt-5 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/[0.1]"
-      >
-        Add activity
-      </button>
+      {canEdit && (
+        <button
+          type="button"
+          onClick={onAdd}
+          className="mt-5 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/[0.1]"
+        >
+          Add activity
+        </button>
+      )}
     </div>
   );
 }
@@ -1095,6 +1112,7 @@ function DeleteDialog({
 
 export function ItineraryTimeline({
   tripId,
+  canEdit,
 }: ItineraryTimelineProps) {
   const [
     state,
@@ -1911,18 +1929,20 @@ export function ItineraryTimeline({
                   : 'Live offline'}
             </span>
 
-            <button
-              type="button"
-              onClick={() =>
-                openCreate(
-                  selectedDay,
-                )
-              }
-              disabled={reordering}
-              className="rounded-xl bg-white px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              + Add activity
-            </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() =>
+                  openCreate(
+                    selectedDay,
+                  )
+                }
+                disabled={reordering}
+                className="rounded-xl bg-white px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                + Add activity
+              </button>
+            )}
           </div>
         </div>
 
@@ -1987,8 +2007,9 @@ export function ItineraryTimeline({
                     : 'planned activities'}
                 </span>
 
-                {orderedActivities.length >
-                  1 && (
+                {canEdit &&
+                  orderedActivities.length >
+                    1 && (
                   <button
                     type="button"
                     onClick={() => {
@@ -2039,6 +2060,9 @@ export function ItineraryTimeline({
                           .length -
                           1
                       }
+                      canEdit={
+                        canEdit
+                      }
                       reordering={
                         reordering
                       }
@@ -2077,6 +2101,7 @@ export function ItineraryTimeline({
               </div>
             ) : (
               <EmptyDay
+                canEdit={canEdit}
                 onAdd={() =>
                   openCreate(
                     selectedDay,
@@ -2088,7 +2113,7 @@ export function ItineraryTimeline({
         </div>
       </section>
 
-      {activityDialog && (
+      {canEdit && activityDialog && (
         <ActivityDialog
           dialog={
             activityDialog
@@ -2108,7 +2133,7 @@ export function ItineraryTimeline({
         />
       )}
 
-      {deleteTarget && (
+      {canEdit && deleteTarget && (
         <DeleteDialog
           activity={
             deleteTarget.activity
