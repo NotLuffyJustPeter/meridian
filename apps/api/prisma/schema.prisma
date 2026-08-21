@@ -45,6 +45,16 @@ enum PlaceCategory {
   OTHER
 }
 
+enum ExpenseCategory {
+  ACCOMMODATION
+  FOOD
+  TRANSPORT
+  ACTIVITIES
+  SHOPPING
+  HEALTH
+  OTHER
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -89,9 +99,11 @@ model Trip {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  owner  User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  days   TripDay[]
-  places Place[]
+  owner    User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  days     TripDay[]
+  places   Place[]
+  budget   Budget?
+  expenses Expense[]
 
   @@index([ownerId])
   @@index([ownerId, status])
@@ -161,4 +173,53 @@ model Place {
   @@index([tripId, name])
   @@index([tripId, sourceProvider, sourcePlaceId])
   @@map("places")
+}
+
+model Budget {
+  id          String   @id @default(uuid())
+  tripId      String   @unique
+  totalAmount Decimal  @db.Decimal(14, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  trip           Trip                  @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  categoryLimits BudgetCategoryLimit[]
+
+  @@index([tripId])
+  @@map("budgets")
+}
+
+model BudgetCategoryLimit {
+  id        String          @id @default(uuid())
+  budgetId  String
+  category  ExpenseCategory
+  amount    Decimal         @db.Decimal(14, 2)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+
+  @@unique([budgetId, category])
+  @@index([budgetId])
+  @@index([budgetId, category])
+  @@map("budget_category_limits")
+}
+
+model Expense {
+  id        String          @id @default(uuid())
+  tripId    String
+  title     String
+  category  ExpenseCategory @default(OTHER)
+  amount    Decimal         @db.Decimal(14, 2)
+  spentAt   DateTime
+  notes     String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@index([tripId, category])
+  @@index([tripId, spentAt])
+  @@map("expenses")
 }

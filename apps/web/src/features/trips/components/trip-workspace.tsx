@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react';
 
+import { BudgetPanel } from '../../budget/components/budget-panel';
 import { ItineraryTimeline } from '../../itinerary/components/itinerary-timeline';
 import { PlacesPanel } from '../../places/components/places-panel';
 import type {
@@ -41,7 +42,8 @@ type TripWorkspaceState =
 type WorkspaceTab =
   | 'overview'
   | 'itinerary'
-  | 'places';
+  | 'places'
+  | 'budget';
 
 function isRecord(
   value: unknown,
@@ -568,7 +570,7 @@ function OverviewContent({
           />
 
           <WorkspaceCard
-            eyebrow="Later"
+            eyebrow="Ready"
             title="Track budget"
             description="Keep travel spending and the trip budget in one place."
             icon={
@@ -694,22 +696,6 @@ function WorkspaceTabButton({
     >
       {children}
     </button>
-  );
-}
-
-function SoonTab({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-2 border-b-2 border-transparent px-4 pb-4 pt-2 text-sm text-slate-600">
-      {children}
-
-      <span className="rounded-full border border-white/[0.06] px-2 py-0.5 text-[9px] uppercase tracking-[0.15em]">
-        Soon
-      </span>
-    </div>
   );
 }
 
@@ -977,35 +963,52 @@ export function TripWorkspace({
           Places
         </WorkspaceTabButton>
 
-        <SoonTab>
+        <WorkspaceTabButton
+          active={
+            activeTab ===
+            'budget'
+          }
+          onClick={() =>
+            setActiveTab(
+              'budget',
+            )
+          }
+        >
           Budget
-        </SoonTab>
+        </WorkspaceTabButton>
       </nav>
 
       {activeTab ===
-  'overview' && (
-  <OverviewContent
-    trip={trip}
-  />
-)}
+        'overview' && (
+        <OverviewContent
+          trip={trip}
+        />
+      )}
 
-    {activeTab ===
-      'itinerary' && (
-      <div className="py-9">
-        <ItineraryTimeline
+      {activeTab ===
+        'itinerary' && (
+        <div className="py-9">
+          <ItineraryTimeline
+            tripId={trip.id}
+          />
+        </div>
+      )}
+
+      {activeTab ===
+        'places' && (
+        <div className="py-9">
+          <PlacesPanel
+            tripId={trip.id}
+          />
+        </div>
+      )}
+
+      {activeTab ===
+        'budget' && (
+        <BudgetPanel
           tripId={trip.id}
         />
-      </div>
-    )}
-
-    {activeTab ===
-      'places' && (
-      <div className="py-9">
-        <PlacesPanel
-          tripId={trip.id}
-        />
-      </div>
-    )}
+      )}
     </div>
   );
 }

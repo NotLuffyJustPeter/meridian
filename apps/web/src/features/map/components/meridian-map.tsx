@@ -187,6 +187,21 @@ function setMarkerSelected(
     '1';
 }
 
+function disposeMarkerEntry(
+  entry: MarkerEntry,
+): void {
+  entry.popup.remove();
+  entry.marker.remove();
+
+  // React 19 can warn when a nested root is synchronously
+  // unmounted while the parent tree is still rendering.
+  // Deferring the root cleanup one task keeps MapLibre DOM
+  // cleanup immediate without racing React's render phase.
+  window.setTimeout(() => {
+    entry.iconRoot.unmount();
+  }, 0);
+}
+
 function createPopupContent(
   place: MappedPlace,
 ): HTMLDivElement {
@@ -499,9 +514,9 @@ export function MeridianMap({
 
       markerStore.forEach(
         (entry) => {
-          entry.iconRoot.unmount();
-          entry.popup.remove();
-          entry.marker.remove();
+          disposeMarkerEntry(
+            entry,
+          );
         },
       );
 
@@ -603,9 +618,9 @@ export function MeridianMap({
 
       markerRefs.current.forEach(
         (entry) => {
-          entry.iconRoot.unmount();
-          entry.popup.remove();
-          entry.marker.remove();
+          disposeMarkerEntry(
+            entry,
+          );
         },
       );
 
