@@ -3,6 +3,14 @@ export type TripStatus =
   | 'PLANNED'
   | 'ARCHIVED';
 
+export type TripMemberRole =
+  | 'EDITOR'
+  | 'VIEWER';
+
+export type TripAccessRole =
+  | 'OWNER'
+  | TripMemberRole;
+
 export interface Trip {
   id: string;
   ownerId: string;
@@ -15,6 +23,33 @@ export interface Trip {
   status: TripStatus;
   createdAt: string;
   updatedAt: string;
+  accessRole: TripAccessRole;
+}
+
+export interface TripCollaborator {
+  id: string;
+  tripId: string;
+  userId: string;
+  role: TripMemberRole;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: 'USER' | 'ADMIN';
+    createdAt: string;
+    updatedAt: string;
+  };
+}
+
+export interface AddCollaboratorInput {
+  email: string;
+  role: TripMemberRole;
+}
+
+export interface UpdateCollaboratorInput {
+  role: TripMemberRole;
 }
 
 export interface CreateTripInput {

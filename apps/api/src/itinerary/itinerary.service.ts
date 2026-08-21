@@ -13,7 +13,7 @@ export class ItineraryService {
   ) {}
 
   async getOrCreateItinerary(ownerId: string, tripId: string) {
-    const trip = await this.tripsService.findOwnedTripOrThrow(ownerId, tripId);
+    const trip = await this.tripsService.findAccessibleTripOrThrow(ownerId, tripId);
 
     const dates = this.buildTripDates(trip.startDate, trip.endDate);
 
@@ -62,7 +62,7 @@ export class ItineraryService {
   }
 
   async createActivity(ownerId: string, tripId: string, dayId: string, dto: CreateActivityDto) {
-    const day = await this.findOwnedDayOrThrow(ownerId, tripId, dayId);
+    const day = await this.findEditableDayOrThrow(ownerId, tripId, dayId);
 
     const title = dto.title.trim();
 
@@ -71,9 +71,7 @@ export class ItineraryService {
     }
 
     const description = dto.description !== undefined ? dto.description.trim() : undefined;
-
     const location = dto.location !== undefined ? dto.location.trim() : undefined;
-
     const notes = dto.notes !== undefined ? dto.notes.trim() : undefined;
 
     this.validateTimeRange(dto.startTime, dto.endTime);
@@ -152,8 +150,7 @@ export class ItineraryService {
       throw new BadRequestException('At least one field must be provided');
     }
 
-    const day = await this.findOwnedDayOrThrow(ownerId, tripId, dayId);
-
+    const day = await this.findEditableDayOrThrow(ownerId, tripId, dayId);
     const activity = await this.findOwnedActivityOrThrow(day.id, activityId);
 
     const title = dto.title !== undefined ? dto.title.trim() : undefined;
@@ -163,14 +160,11 @@ export class ItineraryService {
     }
 
     const description = dto.description !== undefined ? dto.description.trim() : undefined;
-
     const location = dto.location !== undefined ? dto.location.trim() : undefined;
-
     const notes = dto.notes !== undefined ? dto.notes.trim() : undefined;
 
     const startTime =
       dto.startTime !== undefined ? dto.startTime : (activity.startTime ?? undefined);
-
     const endTime = dto.endTime !== undefined ? dto.endTime : (activity.endTime ?? undefined);
 
     this.validateTimeRange(startTime, endTime);
@@ -228,7 +222,7 @@ export class ItineraryService {
     dayId: string,
     activityId: string,
   ): Promise<void> {
-    const day = await this.findOwnedDayOrThrow(ownerId, tripId, dayId);
+    const day = await this.findEditableDayOrThrow(ownerId, tripId, dayId);
 
     const result = await this.prisma.activity.deleteMany({
       where: {
@@ -243,7 +237,7 @@ export class ItineraryService {
   }
 
   async reorderActivities(ownerId: string, tripId: string, dayId: string, activityIds: string[]) {
-    const day = await this.findOwnedDayOrThrow(ownerId, tripId, dayId);
+    const day = await this.findEditableDayOrThrow(ownerId, tripId, dayId);
 
     const existingActivities = await this.prisma.activity.findMany({
       where: {
@@ -302,14 +296,13 @@ export class ItineraryService {
     });
   }
 
-  private async findOwnedDayOrThrow(ownerId: string, tripId: string, dayId: string) {
+  private async findEditableDayOrThrow(ownerId: string, tripId: string, dayId: string) {
+    await this.tripsService.findEditableTripOrThrow(ownerId, tripId);
+
     const day = await this.prisma.tripDay.findFirst({
       where: {
         id: dayId,
         tripId,
-        trip: {
-          ownerId,
-        },
       },
     });
 
@@ -366,12 +359,10 @@ export class ItineraryService {
     );
 
     const dates: Date[] = [];
-
     const current = new Date(start);
 
     while (current.getTime() <= end.getTime()) {
       dates.push(new Date(current));
-
       current.setUTCDate(current.getUTCDate() + 1);
     }
 

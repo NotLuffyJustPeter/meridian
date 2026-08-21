@@ -6,8 +6,17 @@ import {
 } from '@nestjs/common';
 
 import { PrismaService } from '../database/prisma.service';
+import type { Trip, TripMemberRole } from '../generated/prisma/client';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
+
+export type TripAccessRole = 'OWNER' | TripMemberRole;
+
+type TripWithMembership = Trip & {
+  members: Array<{
+    role: TripMemberRole;
+  }>;
+};
 
 @Injectable()
 export class TripsService {
@@ -15,11 +24,8 @@ export class TripsService {
 
   async create(ownerId: string, dto: CreateTripDto) {
     const name = dto.name.trim();
-
     const destination = dto.destination.trim();
-
     const timezone = dto.timezone.trim();
-
     const currency = dto.currency.trim().toUpperCase();
 
     if (!name) {
@@ -33,14 +39,13 @@ export class TripsService {
     this.validateTimezone(timezone);
 
     const startDate = new Date(dto.startDate);
-
     const endDate = new Date(dto.endDate);
 
     if (endDate < startDate) {
       throw new BadRequestException('endDate must be on or after startDate');
     }
 
-    return this.prisma.trip.create({
+    const trip = await this.prisma.trip.create({
       data: {
         ownerId,
         name,
@@ -51,6 +56,50 @@ export class TripsService {
         currency,
       },
     });
+
+    return {
+      ...trip,
+      accessRole: 'OWNER' as const,
+    };
+  }
+
+  async findAllAccessible(userId: string) {
+    const trips = await this.prisma.trip.findMany({
+      where: {
+        OR: [
+          {
+            ownerId: userId,
+          },
+          {
+            members: {
+              some: {
+                userId,
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        members: {
+          where: {
+            userId,
+          },
+          select: {
+            role: true,
+          },
+        },
+      },
+      orderBy: [
+        {
+          startDate: 'asc',
+        },
+        {
+          createdAt: 'desc',
+        },
+      ],
+    });
+
+    return trips.map((trip) => this.attachAccessRole(userId, trip));
   }
 
   async findAllOwned(ownerId: string) {
@@ -84,6 +133,79 @@ export class TripsService {
     return trip;
   }
 
+  async findAccessibleTripOrThrow(userId: string, tripId: string) {
+    const trip = await this.prisma.trip.findFirst({
+      where: {
+        id: tripId,
+        OR: [
+          {
+            ownerId: userId,
+          },
+          {
+            members: {
+              some: {
+                userId,
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        members: {
+          where: {
+            userId,
+          },
+          select: {
+            role: true,
+          },
+        },
+      },
+    });
+
+    if (!trip) {
+      throw new NotFoundException('Trip not found');
+    }
+
+    return this.attachAccessRole(userId, trip);
+  }
+
+  async findEditableTripOrThrow(userId: string, tripId: string) {
+    const trip = await this.prisma.trip.findFirst({
+      where: {
+        id: tripId,
+        OR: [
+          {
+            ownerId: userId,
+          },
+          {
+            members: {
+              some: {
+                userId,
+                role: 'EDITOR',
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        members: {
+          where: {
+            userId,
+          },
+          select: {
+            role: true,
+          },
+        },
+      },
+    });
+
+    if (!trip) {
+      throw new NotFoundException('Trip not found');
+    }
+
+    return this.attachAccessRole(userId, trip);
+  }
+
   async update(ownerId: string, tripId: string, dto: UpdateTripDto) {
     const hasUpdates =
       dto.name !== undefined ||
@@ -101,11 +223,8 @@ export class TripsService {
     const existing = await this.findOwnedTripOrThrow(ownerId, tripId);
 
     const name = dto.name !== undefined ? dto.name.trim() : undefined;
-
     const destination = dto.destination !== undefined ? dto.destination.trim() : undefined;
-
     const timezone = dto.timezone !== undefined ? dto.timezone.trim() : undefined;
-
     const currency = dto.currency !== undefined ? dto.currency.trim().toUpperCase() : undefined;
 
     if (name !== undefined && !name) {
@@ -121,7 +240,6 @@ export class TripsService {
     }
 
     const startDate = dto.startDate !== undefined ? new Date(dto.startDate) : existing.startDate;
-
     const endDate = dto.endDate !== undefined ? new Date(dto.endDate) : existing.endDate;
 
     if (endDate < startDate) {
@@ -136,27 +254,21 @@ export class TripsService {
       ...(name !== undefined && {
         name,
       }),
-
       ...(destination !== undefined && {
         destination,
       }),
-
       ...(dto.startDate !== undefined && {
         startDate,
       }),
-
       ...(dto.endDate !== undefined && {
         endDate,
       }),
-
       ...(timezone !== undefined && {
         timezone,
       }),
-
       ...(currency !== undefined && {
         currency,
       }),
-
       ...(dto.status !== undefined && {
         status: dto.status,
       }),
@@ -207,7 +319,10 @@ export class TripsService {
           throw new NotFoundException('Trip not found');
         }
 
-        return updated;
+        return {
+          ...updated,
+          accessRole: 'OWNER' as const,
+        };
       });
     }
 
@@ -223,7 +338,12 @@ export class TripsService {
       throw new NotFoundException('Trip not found');
     }
 
-    return this.findOwnedTripOrThrow(ownerId, tripId);
+    const updated = await this.findOwnedTripOrThrow(ownerId, tripId);
+
+    return {
+      ...updated,
+      accessRole: 'OWNER' as const,
+    };
   }
 
   async remove(ownerId: string, tripId: string): Promise<void> {
@@ -237,6 +357,28 @@ export class TripsService {
     if (result.count === 0) {
       throw new NotFoundException('Trip not found');
     }
+  }
+
+  private attachAccessRole(userId: string, record: TripWithMembership) {
+    const { members, ...trip } = record;
+
+    if (trip.ownerId === userId) {
+      return {
+        ...trip,
+        accessRole: 'OWNER' as const,
+      };
+    }
+
+    const memberRole = members[0]?.role;
+
+    if (!memberRole) {
+      throw new NotFoundException('Trip not found');
+    }
+
+    return {
+      ...trip,
+      accessRole: memberRole,
+    };
   }
 
   private validateTimezone(timezone: string): void {
