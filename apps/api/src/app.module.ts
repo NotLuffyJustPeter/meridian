@@ -11,6 +11,7 @@ import { ItineraryModule } from './itinerary/itinerary.module';
 import { PlacesModule } from './places/places.module';
 import { TripsModule } from './trips/trips.module';
 import { UsersModule } from './users/users.module';
+import { WeatherModule } from './weather/weather.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { UsersModule } from './users/users.module';
     GeocodingModule,
     BudgetModule,
     ExpensesModule,
+    WeatherModule,
   ],
 })
 export class AppModule {}
