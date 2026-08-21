@@ -78,6 +78,10 @@ export class ItineraryService {
 
     this.validateTimeRange(dto.startTime, dto.endTime);
 
+    if (dto.placeId !== undefined) {
+      await this.findOwnedPlaceOrThrow(tripId, dto.placeId);
+    }
+
     let position = dto.position;
 
     if (position === undefined) {
@@ -118,6 +122,9 @@ export class ItineraryService {
         ...(notes !== undefined && {
           notes,
         }),
+        ...(dto.placeId !== undefined && {
+          placeId: dto.placeId,
+        }),
         position,
       },
     });
@@ -138,7 +145,8 @@ export class ItineraryService {
       dto.endTime !== undefined ||
       dto.location !== undefined ||
       dto.notes !== undefined ||
-      dto.position !== undefined;
+      dto.position !== undefined ||
+      dto.placeId !== undefined;
 
     if (!hasUpdates) {
       throw new BadRequestException('At least one field must be provided');
@@ -166,6 +174,10 @@ export class ItineraryService {
     const endTime = dto.endTime !== undefined ? dto.endTime : (activity.endTime ?? undefined);
 
     this.validateTimeRange(startTime, endTime);
+
+    if (dto.placeId !== undefined) {
+      await this.findOwnedPlaceOrThrow(tripId, dto.placeId);
+    }
 
     const result = await this.prisma.activity.updateMany({
       where: {
@@ -196,6 +208,9 @@ export class ItineraryService {
         }),
         ...(dto.position !== undefined && {
           position: dto.position,
+        }),
+        ...(dto.placeId !== undefined && {
+          placeId: dto.placeId,
         }),
       },
     });
@@ -303,6 +318,21 @@ export class ItineraryService {
     }
 
     return day;
+  }
+
+  private async findOwnedPlaceOrThrow(tripId: string, placeId: string) {
+    const place = await this.prisma.place.findFirst({
+      where: {
+        id: placeId,
+        tripId,
+      },
+    });
+
+    if (!place) {
+      throw new NotFoundException('Place not found');
+    }
+
+    return place;
   }
 
   private async findOwnedActivityOrThrow(tripDayId: string, activityId: string) {

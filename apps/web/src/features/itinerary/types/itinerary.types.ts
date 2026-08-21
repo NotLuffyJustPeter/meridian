@@ -10,6 +10,7 @@ export type ActivityCategory =
 export interface Activity {
   id: string;
   tripDayId: string;
+  placeId: string | null;
   title: string;
   description: string | null;
   category: ActivityCategory;
@@ -50,6 +51,7 @@ export interface CreateActivityInput {
   location?: string;
   notes?: string;
   position?: number;
+  placeId?: string;
 }
 
 export interface UpdateActivityInput {
@@ -61,6 +63,7 @@ export interface UpdateActivityInput {
   location?: string;
   notes?: string;
   position?: number;
+  placeId?: string;
 }
 
 export interface ReorderActivitiesInput {
