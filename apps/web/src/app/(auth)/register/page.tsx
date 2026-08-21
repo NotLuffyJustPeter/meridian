@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 
 import { RegisterForm } from '../../../features/auth/components/register-form';
@@ -7,5 +8,16 @@ export const metadata: Metadata = {
 };
 
 export default function RegisterPage() {
-  return <RegisterForm />;
+  const googleClientId =
+    process.env
+      .GOOGLE_CLIENT_ID
+      ?.trim() ?? '';
+
+  return (
+    <RegisterForm
+      googleClientId={
+        googleClientId
+      }
+    />
+  );
 }

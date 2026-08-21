@@ -31,3 +31,12 @@ export type RefreshApiData = {
   accessToken: string;
   refreshToken: string;
 };
+export type SecurityStatus = {
+  password: {
+    enabled: boolean;
+  };
+  google: {
+    connected: boolean;
+    canDisconnect: boolean;
+  };
+};

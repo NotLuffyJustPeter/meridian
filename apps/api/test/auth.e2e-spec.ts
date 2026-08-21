@@ -1,10 +1,11 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from '@jest/globals';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 
 import { AppModule } from './../src/app.module';
+import { GoogleIdentityService } from './../src/auth/google-identity.service';
 import { PrismaService } from './../src/database/prisma.service';
 
 interface PublicUserResponse {
@@ -65,8 +66,21 @@ function assertTestDatabase(): void {
 
 describe('Auth API (e2e)', () => {
   let app: INestApplication<App>;
+
   let prisma: PrismaService;
+
   let initialized = false;
+
+  const googleIdentityService = {
+    verifyCredential: jest.fn<
+      (credential: string) => Promise<{
+        providerSubject: string;
+        email: string;
+        name: string | null;
+      }>
+    >(),
+  };
+
   const email = 'auth-e2e@meridian.local';
 
   const password = 'MeridianE2e123!';
@@ -77,6 +91,8 @@ describe('Auth API (e2e)', () => {
     assertTestDatabase();
 
     await prisma.authSession.deleteMany();
+
+    await prisma.authIdentity.deleteMany();
 
     await prisma.user.deleteMany();
   }
@@ -111,7 +127,10 @@ describe('Auth API (e2e)', () => {
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(GoogleIdentityService)
+      .useValue(googleIdentityService)
+      .compile();
 
     app = moduleFixture.createNestApplication();
 
@@ -136,6 +155,8 @@ describe('Auth API (e2e)', () => {
 
   beforeEach(async () => {
     await cleanDatabase();
+
+    googleIdentityService.verifyCredential.mockReset();
   });
 
   afterAll(async () => {
@@ -207,6 +228,70 @@ describe('Auth API (e2e)', () => {
     expect(currentUser).not.toHaveProperty('passwordHash');
   });
 
+  it('creates and signs in a new Google user using a verified external identity', async () => {
+    googleIdentityService.verifyCredential.mockResolvedValue({
+      providerSubject: 'google-e2e-subject',
+      email: 'google-e2e@meridian.local',
+      name: 'Google E2E',
+    });
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/auth/google')
+      .send({
+        credential: 'fake-google-credential-for-e2e',
+      })
+      .expect(200);
+
+    const payload = parseJson<PossiblyWrapped<LoginResponseData>>(response);
+
+    const login = unwrap(payload);
+
+    expect(login.accessToken).toEqual(expect.any(String));
+
+    expect(login.refreshToken).toEqual(expect.any(String));
+
+    expect(login.user.email).toBe('google-e2e@meridian.local');
+
+    const storedUser = await prisma.user.findUnique({
+      where: {
+        email: 'google-e2e@meridian.local',
+      },
+      include: {
+        identities: true,
+      },
+    });
+
+    expect(storedUser?.passwordHash).toBeNull();
+
+    expect(storedUser?.identities).toHaveLength(1);
+
+    expect(storedUser?.identities[0]).toMatchObject({
+      provider: 'GOOGLE',
+      providerSubject: 'google-e2e-subject',
+    });
+  });
+
+  it('does not silently link Google to an existing password account with the same email', async () => {
+    await registerUser();
+
+    googleIdentityService.verifyCredential.mockResolvedValue({
+      providerSubject: 'google-existing-email',
+      email,
+      name: 'Meridian E2E',
+    });
+
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/google')
+      .send({
+        credential: 'fake-google-credential-for-conflict',
+      })
+      .expect(409);
+
+    const identityCount = await prisma.authIdentity.count();
+
+    expect(identityCount).toBe(0);
+  });
+
   it('rotates refresh tokens and revokes the session after replay detection', async () => {
     await registerUser();
 
@@ -276,6 +361,169 @@ describe('Auth API (e2e)', () => {
     expect(sessions).toHaveLength(1);
 
     expect(sessions[0]?.revokedAt).not.toBeNull();
+  });
+
+  it('links Google explicitly to an authenticated password account', async () => {
+    await registerUser();
+
+    const login = await loginUser();
+
+    const beforeResponse = await request(app.getHttpServer())
+      .get('/api/v1/auth/security')
+      .set('Authorization', `Bearer ${login.accessToken}`)
+      .expect(200);
+
+    const before = unwrap(
+      parseJson<
+        PossiblyWrapped<{
+          password: {
+            enabled: boolean;
+          };
+          google: {
+            connected: boolean;
+            canDisconnect: boolean;
+          };
+        }>
+      >(beforeResponse),
+    );
+
+    expect(before.password.enabled).toBe(true);
+    expect(before.google.connected).toBe(false);
+
+    googleIdentityService.verifyCredential.mockResolvedValue({
+      providerSubject: 'google-linked-subject',
+      email,
+      name,
+    });
+
+    const linkResponse = await request(app.getHttpServer())
+      .post('/api/v1/auth/google/link')
+      .set('Authorization', `Bearer ${login.accessToken}`)
+      .send({
+        credential: 'fake-google-link-credential',
+      })
+      .expect(200);
+
+    const linked = unwrap(
+      parseJson<
+        PossiblyWrapped<{
+          password: {
+            enabled: boolean;
+          };
+          google: {
+            connected: boolean;
+            canDisconnect: boolean;
+          };
+        }>
+      >(linkResponse),
+    );
+
+    expect(linked.google.connected).toBe(true);
+    expect(linked.google.canDisconnect).toBe(true);
+
+    const identity = await prisma.authIdentity.findFirst({
+      where: {
+        userId: login.user.id,
+        provider: 'GOOGLE',
+      },
+    });
+
+    expect(identity?.providerSubject).toBe('google-linked-subject');
+  });
+
+  it('rejects linking a Google account with a different email', async () => {
+    await registerUser();
+
+    const login = await loginUser();
+
+    googleIdentityService.verifyCredential.mockResolvedValue({
+      providerSubject: 'google-other-email',
+      email: 'someone-else@meridian.local',
+      name: 'Someone Else',
+    });
+
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/google/link')
+      .set('Authorization', `Bearer ${login.accessToken}`)
+      .send({
+        credential: 'fake-google-mismatched-email',
+      })
+      .expect(400);
+
+    expect(await prisma.authIdentity.count()).toBe(0);
+  });
+
+  it('disconnects Google when a password sign-in method remains', async () => {
+    await registerUser();
+
+    const login = await loginUser();
+
+    googleIdentityService.verifyCredential.mockResolvedValue({
+      providerSubject: 'google-removable-subject',
+      email,
+      name,
+    });
+
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/google/link')
+      .set('Authorization', `Bearer ${login.accessToken}`)
+      .send({
+        credential: 'fake-google-link-before-delete',
+      })
+      .expect(200);
+
+    const response = await request(app.getHttpServer())
+      .delete('/api/v1/auth/google/link')
+      .set('Authorization', `Bearer ${login.accessToken}`)
+      .expect(200);
+
+    const status = unwrap(
+      parseJson<
+        PossiblyWrapped<{
+          password: {
+            enabled: boolean;
+          };
+          google: {
+            connected: boolean;
+            canDisconnect: boolean;
+          };
+        }>
+      >(response),
+    );
+
+    expect(status.google.connected).toBe(false);
+    expect(await prisma.authIdentity.count()).toBe(0);
+  });
+
+  it('prevents a Google-only user from disconnecting its only sign-in method', async () => {
+    googleIdentityService.verifyCredential.mockResolvedValue({
+      providerSubject: 'google-only-protected',
+      email: 'google-only@meridian.local',
+      name: 'Google Only',
+    });
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/auth/google')
+      .send({
+        credential: 'fake-google-only-credential',
+      })
+      .expect(200);
+
+    const login = unwrap(parseJson<PossiblyWrapped<LoginResponseData>>(response));
+
+    await request(app.getHttpServer())
+      .delete('/api/v1/auth/google/link')
+      .set('Authorization', `Bearer ${login.accessToken}`)
+      .expect(400);
+
+    const identity = await prisma.authIdentity.findFirst({
+      where: {
+        userId: login.user.id,
+        provider: 'GOOGLE',
+      },
+    });
+
+    expect(identity).not.toBeNull();
   });
 
   it('rejects /me without an access token', async () => {

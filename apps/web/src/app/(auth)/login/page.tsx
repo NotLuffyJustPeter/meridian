@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 
 import { LoginForm } from '../../../features/auth/components/login-form';
@@ -18,12 +19,22 @@ type LoginPageProps = {
 export default async function LoginPage({
   searchParams,
 }: LoginPageProps) {
-  const params = await searchParams;
+  const params =
+    await searchParams;
+
+  const googleClientId =
+    process.env
+      .GOOGLE_CLIENT_ID
+      ?.trim() ?? '';
 
   return (
     <LoginForm
       registrationSucceeded={
-        params.registered === '1'
+        params.registered ===
+        '1'
+      }
+      googleClientId={
+        googleClientId
       }
     />
   );

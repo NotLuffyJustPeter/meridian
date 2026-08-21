@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
@@ -13,9 +18,11 @@ import type {
   PublicUser,
   RefreshResult,
   RefreshTokenPayload,
+  SecurityStatus,
 } from './auth.types';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { GoogleIdentityService } from './google-identity.service';
 
 @Injectable()
 export class AuthService {
@@ -24,6 +31,7 @@ export class AuthService {
     private readonly authSessionsService: AuthSessionsService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly googleIdentityService: GoogleIdentityService,
   ) {}
 
   async register(dto: RegisterDto): Promise<PublicUser> {
@@ -47,7 +55,7 @@ export class AuthService {
   async login(dto: LoginDto): Promise<LoginResult> {
     const user = await this.usersService.findByEmail(dto.email);
 
-    if (!user) {
+    if (!user || !user.passwordHash) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -57,12 +65,135 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const tokens = await this.createSession(user);
+    return this.loginUser(user);
+  }
+
+  async loginWithGoogle(credential: string): Promise<LoginResult> {
+    const identity = await this.googleIdentityService.verifyCredential(credential);
+
+    const federatedUser = await this.usersService.findByExternalIdentity(
+      'GOOGLE',
+      identity.providerSubject,
+    );
+
+    if (federatedUser) {
+      return this.loginUser(federatedUser);
+    }
+
+    const existingUser = await this.usersService.findByEmail(identity.email);
+
+    if (existingUser) {
+      throw new ConflictException(
+        'An account already exists with this email. Sign in with your password to link Google securely.',
+      );
+    }
+
+    const name = identity.name ?? this.getNameFromEmail(identity.email);
+
+    const user = await this.usersService.createWithExternalIdentity({
+      email: identity.email,
+      name,
+      provider: 'GOOGLE',
+      providerSubject: identity.providerSubject,
+    });
+
+    return this.loginUser(user);
+  }
+
+  async getSecurityStatus(userId: string): Promise<SecurityStatus> {
+    const user = await this.usersService.findById(userId);
+
+    if (!user) {
+      throw new UnauthorizedException('Authenticated user no longer exists');
+    }
+
+    const googleIdentity = await this.usersService.findExternalIdentityForUser(user.id, 'GOOGLE');
+
+    const hasPassword = Boolean(user.passwordHash);
 
     return {
-      user: this.toPublicUser(user),
-      ...tokens,
+      password: {
+        enabled: hasPassword,
+      },
+      google: {
+        connected: googleIdentity !== null,
+        canDisconnect: googleIdentity !== null && hasPassword,
+      },
     };
+  }
+
+  async linkGoogleIdentity(userId: string, credential: string): Promise<SecurityStatus> {
+    const user = await this.usersService.findById(userId);
+
+    if (!user) {
+      throw new UnauthorizedException('Authenticated user no longer exists');
+    }
+
+    const identity = await this.googleIdentityService.verifyCredential(credential);
+
+    if (user.email.trim().toLowerCase() !== identity.email.trim().toLowerCase()) {
+      throw new BadRequestException(
+        'Sign in to Google with the same email as your Meridian account.',
+      );
+    }
+
+    const identityBySubject = await this.usersService.findExternalIdentity(
+      'GOOGLE',
+      identity.providerSubject,
+    );
+
+    if (identityBySubject && identityBySubject.userId !== user.id) {
+      throw new ConflictException(
+        'This Google account is already linked to another Meridian account.',
+      );
+    }
+
+    const existingGoogleIdentity = await this.usersService.findExternalIdentityForUser(
+      user.id,
+      'GOOGLE',
+    );
+
+    if (existingGoogleIdentity) {
+      if (existingGoogleIdentity.providerSubject === identity.providerSubject) {
+        return this.getSecurityStatus(user.id);
+      }
+
+      throw new ConflictException(
+        'A different Google account is already linked to this Meridian account.',
+      );
+    }
+
+    await this.usersService.createExternalIdentity({
+      userId: user.id,
+      provider: 'GOOGLE',
+      providerSubject: identity.providerSubject,
+    });
+
+    return this.getSecurityStatus(user.id);
+  }
+
+  async unlinkGoogleIdentity(userId: string): Promise<SecurityStatus> {
+    const user = await this.usersService.findById(userId);
+
+    if (!user) {
+      throw new UnauthorizedException('Authenticated user no longer exists');
+    }
+
+    const googleIdentity = await this.usersService.findExternalIdentityForUser(user.id, 'GOOGLE');
+
+    if (!googleIdentity) {
+      return this.getSecurityStatus(user.id);
+    }
+
+    if (!user.passwordHash) {
+      throw new BadRequestException(
+        'Add a password before disconnecting Google so you do not lose access to Meridian.',
+      );
+    }
+
+    await this.usersService.deleteExternalIdentity(googleIdentity.id);
+
+    return this.getSecurityStatus(user.id);
   }
 
   async refresh(refreshToken: string): Promise<RefreshResult> {
@@ -141,6 +272,15 @@ export class AuthService {
     }
 
     return this.toPublicUser(user);
+  }
+
+  private async loginUser(user: User): Promise<LoginResult> {
+    const tokens = await this.createSession(user);
+
+    return {
+      user: this.toPublicUser(user),
+      ...tokens,
+    };
   }
 
   private async createSession(user: User): Promise<{
@@ -256,6 +396,12 @@ export class AuthService {
     }
 
     return value;
+  }
+
+  private getNameFromEmail(email: string): string {
+    const localPart = email.split('@')[0]?.trim();
+
+    return localPart && localPart.length > 0 ? localPart : 'Traveler';
   }
 
   private toPublicUser(user: User): PublicUser {
