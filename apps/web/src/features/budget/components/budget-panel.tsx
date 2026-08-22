@@ -661,7 +661,7 @@ function ExpenseDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-end justify-center overflow-hidden bg-black/75 p-0 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6"
       role="dialog"
       aria-modal="true"
       aria-label="Add expense"
@@ -671,7 +671,7 @@ function ExpenseDialog({
         }
       }}
     >
-      <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-[1.75rem] border border-white/[0.1] bg-[#0a1520] shadow-[0_30px_120px_rgba(0,0,0,0.65)]">
+      <div className="flex h-[100dvh] w-full max-w-xl flex-col overflow-hidden border border-white/[0.1] bg-[#0a1520] shadow-[0_30px_120px_rgba(0,0,0,0.65)] sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-[1.75rem]">
         <div className="sticky top-0 z-10 flex items-start justify-between border-b border-white/[0.07] bg-[#0a1520]/95 px-5 py-5 backdrop-blur-xl sm:px-6">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">
@@ -693,7 +693,7 @@ function ExpenseDialog({
           </button>
         </div>
 
-        <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
+        <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto overscroll-contain p-5 sm:grid-cols-2 sm:p-6">
           <label className="sm:col-span-2">
             <span className="text-xs font-medium text-slate-400">Title</span>
             <input
@@ -760,7 +760,7 @@ function ExpenseDialog({
           )}
         </div>
 
-        <div className="sticky bottom-0 flex flex-col-reverse gap-3 border-t border-white/[0.07] bg-[#0a1520]/95 px-5 py-5 backdrop-blur-xl sm:flex-row sm:justify-end sm:px-6">
+        <div className="z-20 flex shrink-0 flex-col-reverse gap-3 border-t border-white/[0.07] bg-[#0a1520]/95 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 backdrop-blur-xl sm:flex-row sm:justify-end sm:px-6 sm:py-5">
           <button
             type="button"
             onClick={onClose}

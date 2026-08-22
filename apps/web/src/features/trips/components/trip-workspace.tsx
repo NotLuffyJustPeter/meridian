@@ -1,5 +1,9 @@
 'use client';
 
+import {
+  motion,
+  useReducedMotion,
+} from 'motion/react';
 import Link from 'next/link';
 import type {
   ReactNode,
@@ -9,9 +13,9 @@ import {
   useState,
 } from 'react';
 
-import { AiPlannerPanel } from '../../ai/components/ai-planner-panel';
+import { MeridianAiAssistant } from '../../ai/components/meridian-ai-assistant';
 import { BudgetPanel } from '../../budget/components/budget-panel';
-import { ItineraryTimeline } from '../../itinerary/components/itinerary-timeline';
+import { ItineraryMapWorkspace } from '../../itinerary/components/itinerary-map-workspace';
 import { PlacesPanel } from '../../places/components/places-panel';
 import {
   WeatherJourneyStrip,
@@ -47,7 +51,6 @@ type TripWorkspaceState =
 
 type WorkspaceTab =
   | 'overview'
-  | 'ai'
   | 'itinerary'
   | 'places'
   | 'weather'
@@ -441,30 +444,6 @@ function WalletIcon() {
 
 
 
-function AiIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      className="h-5 w-5"
-    >
-      <path
-        d="m12 3 1.4 4.1L17.5 8.5l-4.1 1.4L12 14l-1.4-4.1-4.1-1.4 4.1-1.4L12 3Z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      <path
-        d="m18 14 .8 2.2L21 17l-2.2.8L18 20l-.8-2.2L15 17l2.2-.8L18 14Z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 function WeatherIcon() {
   return (
     <svg
@@ -616,12 +595,8 @@ function NotFoundState() {
 
 function OverviewContent({
   trip,
-  canEdit,
-  onOpenAi,
 }: {
   trip: Trip;
-  canEdit: boolean;
-  onOpenAi: () => void;
 }) {
   return (
     <section className="grid gap-6 py-9 lg:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.6fr)]">
@@ -684,37 +659,6 @@ function OverviewContent({
           />
         </div>
 
-        {canEdit && (
-          <button
-            type="button"
-            onClick={onOpenAi}
-            className="group mt-5 flex w-full items-center justify-between gap-5 rounded-[1.5rem] border border-sky-300/10 bg-[linear-gradient(135deg,rgba(125,211,252,0.06),rgba(255,255,255,0.02))] p-5 text-left transition hover:border-sky-300/20 hover:bg-sky-300/[0.065]"
-          >
-            <div className="flex min-w-0 items-center gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-sky-300/15 bg-sky-300/[0.07] text-sky-200">
-                <AiIcon />
-              </div>
-
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">
-                  Meridian AI
-                </p>
-
-                <p className="mt-1 text-sm font-semibold text-white">
-                  Build a context-aware journey proposal
-                </p>
-
-                <p className="mt-1 text-xs leading-5 text-slate-500">
-                  Use your itinerary, saved places, budget and weather without overwriting anything automatically.
-                </p>
-              </div>
-            </div>
-
-            <span className="hidden text-sm font-semibold text-sky-200 transition group-hover:translate-x-1 sm:block">
-              Open AI →
-            </span>
-          </button>
-        )}
 
         <div className="mt-8 overflow-hidden rounded-[1.75rem] border border-white/[0.07] bg-white/[0.025]">
           <div className="flex items-center justify-between border-b border-white/[0.07] px-6 py-5">
@@ -820,18 +764,43 @@ function WorkspaceTabButton({
   children: ReactNode;
   onClick: () => void;
 }) {
+  const reduceMotion =
+    useReducedMotion();
+
   return (
     <button
       type="button"
       onClick={onClick}
       className={[
-        'border-b-2 px-4 pb-4 pt-2 text-sm transition',
+        'relative shrink-0 overflow-hidden rounded-xl border px-3.5 py-2.5 text-sm font-medium outline-none transition',
         active
-          ? 'border-sky-300 font-semibold text-white'
-          : 'border-transparent text-slate-500 hover:text-slate-200',
+          ? 'border-sky-300/10 text-sky-100'
+          : 'border-transparent text-slate-500 hover:bg-white/[0.035] hover:text-slate-200',
+        'focus-visible:ring-2 focus-visible:ring-sky-300/20',
       ].join(' ')}
     >
-      {children}
+      {active && (
+        <motion.span
+          layoutId="meridian-workspace-tab"
+          transition={{
+            duration:
+              reduceMotion
+                ? 0
+                : 0.24,
+            ease: [
+              0.22,
+              1,
+              0.36,
+              1,
+            ],
+          }}
+          className="absolute inset-0 rounded-xl bg-sky-300/[0.06]"
+        />
+      )}
+
+      <span className="relative">
+        {children}
+      </span>
     </button>
   );
 }
@@ -861,6 +830,20 @@ export function TripWorkspace({
 
   const [shareOpen, setShareOpen] = useState(false);
 
+  const [
+    statusSaving,
+    setStatusSaving,
+  ] =
+    useState(false);
+
+  const [
+    statusError,
+    setStatusError,
+  ] =
+    useState<string | null>(
+      null,
+    );
+
   useEffect(() => {
     let cancelled = false;
 
@@ -880,6 +863,84 @@ export function TripWorkspace({
       cancelled = true;
     };
   }, [tripId]);
+
+  async function updateJourneyStatus(
+    nextStatus: TripStatus,
+  ) {
+    if (
+      state.status !==
+        'success' ||
+      state.trip.accessRole !==
+        'OWNER'
+    ) {
+      return;
+    }
+
+    setStatusSaving(true);
+    setStatusError(null);
+
+    try {
+      const response =
+        await fetch(
+          `/api/trips/${encodeURIComponent(
+            state.trip.id,
+          )}`,
+          {
+            method:
+              'PATCH',
+            headers: {
+              'content-type':
+                'application/json',
+              accept:
+                'application/json',
+            },
+            body:
+              JSON.stringify({
+                status:
+                  nextStatus,
+              }),
+          },
+        );
+
+      const payload: unknown =
+        await response.json();
+
+      if (!response.ok) {
+        setStatusError(
+          readErrorMessage(
+            payload,
+          ),
+        );
+        return;
+      }
+
+      const updatedTrip =
+        readTrip(
+          payload,
+        );
+
+      if (!updatedTrip) {
+        setStatusError(
+          'Meridian updated the journey but returned an unexpected response.',
+        );
+        return;
+      }
+
+      setState({
+        status:
+          'success',
+        trip:
+          updatedTrip,
+        error: null,
+      });
+    } catch {
+      setStatusError(
+        'Journey status could not be updated right now.',
+      );
+    } finally {
+      setStatusSaving(false);
+    }
+  }
 
   if (
     state.status ===
@@ -963,121 +1024,150 @@ export function TripWorkspace({
         </Link>
 
         {trip.accessRole === 'OWNER' && (
-          <button
-            type="button"
-            onClick={() => setShareOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.035] px-3.5 py-2 text-sm font-medium text-slate-200 transition hover:border-sky-300/20 hover:bg-sky-300/[0.06] hover:text-white"
-          >
-            <ShareIcon />
-            Share journey
-          </button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {trip.status !==
+              'ARCHIVED' && (
+              <button
+                type="button"
+                disabled={
+                  statusSaving
+                }
+                onClick={() => {
+                  void updateJourneyStatus(
+                    trip.status ===
+                      'DRAFT'
+                      ? 'PLANNED'
+                      : 'DRAFT',
+                  );
+                }}
+                className={[
+                  'inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium outline-none transition disabled:cursor-wait disabled:opacity-50',
+                  trip.status ===
+                  'DRAFT'
+                    ? 'border-emerald-300/15 bg-emerald-300/[0.055] text-emerald-100 hover:border-emerald-300/25 hover:bg-emerald-300/[0.08]'
+                    : 'border-white/[0.08] bg-white/[0.025] text-slate-400 hover:bg-white/[0.05] hover:text-white',
+                ].join(' ')}
+              >
+                {statusSaving
+                  ? 'Updating…'
+                  : trip.status ===
+                      'DRAFT'
+                    ? 'Mark as planned'
+                    : 'Reopen as draft'}
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShareOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.035] px-3.5 py-2 text-sm font-medium text-slate-200 transition hover:border-sky-300/20 hover:bg-sky-300/[0.06] hover:text-white"
+            >
+              <ShareIcon />
+              Share journey
+            </button>
+          </div>
         )}
       </div>
 
-      <section className="relative mt-8 overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[linear-gradient(135deg,#0b2534_0%,#103345_48%,#0a1722_100%)]">
-        <div className="pointer-events-none absolute -right-20 -top-36 h-80 w-80 rounded-full border border-sky-200/10 bg-sky-300/[0.04]" />
+      {statusError && (
+        <div className="mt-4 rounded-xl border border-rose-300/10 bg-rose-300/[0.04] px-4 py-3 text-xs text-rose-200">
+          {statusError}
+        </div>
+      )}
 
-        <div className="pointer-events-none absolute -bottom-48 left-[28%] h-72 w-72 rounded-full border border-white/[0.05] bg-white/[0.02]" />
+      <section className="relative mt-6 overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(135deg,rgba(11,37,52,0.88)_0%,rgba(12,31,44,0.92)_48%,rgba(7,17,27,0.96)_100%)] shadow-[0_30px_90px_rgba(0,0,0,0.22)]">
+        <div className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full border border-sky-200/10 bg-sky-300/[0.035]" />
 
-        <div className="pointer-events-none absolute bottom-[-1.5rem] right-12 select-none text-[12rem] font-semibold leading-none tracking-[-0.12em] text-white/[0.035]">
+        <div className="pointer-events-none absolute bottom-[-3.5rem] right-8 select-none text-[9rem] font-semibold leading-none tracking-[-0.12em] text-white/[0.03] sm:text-[11rem]">
           {destinationInitial}
         </div>
 
-        <div className="relative p-7 sm:p-10">
-          <div className="flex flex-wrap items-center gap-3">
-            <span
-              className={`inline-flex rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${getStatusClasses(
-                trip.status,
-              )}`}
-            >
-              {getStatusLabel(
-                trip.status,
-              )}
-            </span>
+        <div className="relative p-6 sm:p-8">
+          <div className="flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0 max-w-3xl">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span
+                  className={`inline-flex rounded-full border px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.17em] ${getStatusClasses(
+                    trip.status,
+                  )}`}
+                >
+                  {getStatusLabel(
+                    trip.status,
+                  )}
+                </span>
 
-            <span className="text-xs text-sky-100/50">
-              {formatDate(
-                trip.startDate,
-              )}{' '}
-              —{' '}
-              {formatDate(
-                trip.endDate,
-              )}
-            </span>
+                <span
+                  className={[
+                    'inline-flex rounded-full border px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.15em]',
+                    getAccessRoleClasses(
+                      trip.accessRole,
+                    ),
+                  ].join(' ')}
+                >
+                  {getAccessRoleLabel(
+                    trip.accessRole,
+                  )}
+                </span>
 
-            <span
-              className={[
-                'inline-flex rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em]',
-                getAccessRoleClasses(trip.accessRole),
-              ].join(' ')}
-            >
-              {getAccessRoleLabel(trip.accessRole)}
-            </span>
+                <span className="text-[11px] text-sky-100/45">
+                  {formatDate(
+                    trip.startDate,
+                  )}{' '}
+                  —{' '}
+                  {formatDate(
+                    trip.endDate,
+                  )}
+                </span>
+              </div>
+
+              <p className="mt-6 text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-200/65">
+                {trip.name}
+              </p>
+
+              <h1 className="mt-2 truncate text-3xl font-semibold tracking-[-0.05em] text-white sm:text-4xl lg:text-5xl">
+                {trip.destination}
+              </h1>
+
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-sky-50/45">
+                One workspace for the itinerary, map, places, weather, spending and live collaboration around this journey.
+              </p>
+            </div>
+
+            <div className="grid shrink-0 grid-cols-3 gap-2 lg:min-w-[25rem]">
+              <div className="rounded-2xl border border-white/[0.07] bg-black/10 px-4 py-3.5">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-500">
+                  Duration
+                </p>
+
+                <p className="mt-2 text-sm font-semibold text-white">
+                  {duration}{' '}
+                  {duration === 1
+                    ? 'day'
+                    : 'days'}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/[0.07] bg-black/10 px-4 py-3.5">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-500">
+                  Currency
+                </p>
+
+                <p className="mt-2 text-sm font-semibold text-white">
+                  {trip.currency}
+                </p>
+              </div>
+
+              <div className="min-w-0 rounded-2xl border border-white/[0.07] bg-black/10 px-4 py-3.5">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-500">
+                  Timezone
+                </p>
+
+                <p className="mt-2 truncate text-xs font-semibold text-white">
+                  {trip.timezone}
+                </p>
+              </div>
+            </div>
           </div>
-
-          <div className="mt-14 max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-200/70">
-              {trip.name}
-            </p>
-
-            <h1 className="mt-3 text-4xl font-semibold tracking-[-0.055em] text-white sm:text-5xl lg:text-6xl">
-              {trip.destination}
-            </h1>
-
-            <p className="mt-5 max-w-xl text-sm leading-7 text-sky-50/50">
-              Your journey workspace
-              keeps the plan, places and
-              travel context together
-              from departure to return.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-            Duration
-          </p>
-
-          <p className="mt-3 text-xl font-semibold tracking-[-0.03em] text-white">
-            {duration}{' '}
-            {duration === 1
-              ? 'day'
-              : 'days'}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-            Currency
-          </p>
-
-          <p className="mt-3 text-xl font-semibold tracking-[-0.03em] text-white">
-            {trip.currency}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-            Timezone
-          </p>
-
-          <p className="mt-3 truncate text-sm font-semibold text-white">
-            {trip.timezone}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-            Journey state
-          </p>
-
-          <p className="mt-3 text-sm font-semibold text-white">
-            {getStatusLabel(
-              trip.status,
-            )}
-          </p>
         </div>
       </section>
 
@@ -1097,10 +1187,11 @@ export function TripWorkspace({
         </div>
       )}
 
-      <nav
-        aria-label="Journey workspace"
-        className="mt-10 flex gap-1 overflow-x-auto border-b border-white/[0.07]"
-      >
+      <div className="sticky top-[72px] z-30 -mx-2 mt-7 border-y border-transparent bg-[#050b12]/86 px-2 py-2 backdrop-blur-xl supports-[backdrop-filter]:bg-[#050b12]/74">
+        <nav
+          aria-label="Journey workspace"
+          className="flex w-full gap-1 overflow-x-auto rounded-2xl border border-white/[0.07] bg-[#08131d]/88 p-1.5 shadow-[0_14px_42px_rgba(0,0,0,0.16)]"
+        >
         <WorkspaceTabButton
           active={
             activeTab ===
@@ -1115,21 +1206,6 @@ export function TripWorkspace({
           Overview
         </WorkspaceTabButton>
 
-        {canEdit && (
-          <WorkspaceTabButton
-            active={
-              activeTab ===
-              'ai'
-            }
-            onClick={() =>
-              setActiveTab(
-                'ai',
-              )
-            }
-          >
-            Meridian AI
-          </WorkspaceTabButton>
-        )}
 
         <WorkspaceTabButton
           active={
@@ -1186,39 +1262,36 @@ export function TripWorkspace({
         >
           Budget
         </WorkspaceTabButton>
-      </nav>
+        </nav>
+      </div>
 
+      <motion.div
+        key={activeTab}
+        initial={{
+          opacity: 0,
+          y: 5,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          duration: 0.22,
+          ease: [
+            0.22,
+            1,
+            0.36,
+            1,
+          ],
+        }}
+      >
       {activeTab ===
         'overview' && (
         <OverviewContent
           trip={trip}
-          canEdit={canEdit}
-          onOpenAi={() =>
-            setActiveTab(
-              'ai',
-            )
-          }
         />
       )}
 
-      {canEdit &&
-        activeTab ===
-          'ai' && (
-        <AiPlannerPanel
-          tripId={trip.id}
-          destination={
-            trip.destination
-          }
-          currency={
-            trip.currency
-          }
-          onOpenItinerary={() =>
-            setActiveTab(
-              'itinerary',
-            )
-          }
-        />
-      )}
 
       {activeTab ===
         'itinerary' && (
@@ -1227,8 +1300,8 @@ export function TripWorkspace({
             tripId={trip.id}
           />
 
-          <div className="mt-8">
-            <ItineraryTimeline
+          <div className="mt-5">
+            <ItineraryMapWorkspace
               tripId={trip.id}
               canEdit={canEdit}
             />
@@ -1258,6 +1331,24 @@ export function TripWorkspace({
         <BudgetPanel
           tripId={trip.id}
           canEdit={canEdit}
+        />
+      )}
+      </motion.div>
+
+      {canEdit && (
+        <MeridianAiAssistant
+          tripId={trip.id}
+          destination={
+            trip.destination
+          }
+          currency={
+            trip.currency
+          }
+          onOpenItinerary={() =>
+            setActiveTab(
+              'itinerary',
+            )
+          }
         />
       )}
 

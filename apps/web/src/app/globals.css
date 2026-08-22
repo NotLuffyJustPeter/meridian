@@ -2,14 +2,40 @@
 
 :root {
   color-scheme: dark;
-  --background: #050b12;
-  --foreground: #eef6ff;
-  --meridian-surface: #08131d;
-  --meridian-surface-raised: #0b1824;
+
+  --meridian-canvas: #050b12;
+  --meridian-canvas-soft: #07101b;
+  --meridian-surface: rgba(8, 19, 29, 0.78);
+  --meridian-surface-solid: #08131d;
+  --meridian-surface-raised: rgba(11, 24, 36, 0.88);
+  --meridian-surface-hover: rgba(255, 255, 255, 0.045);
+
   --meridian-border: rgba(255, 255, 255, 0.08);
+  --meridian-border-strong: rgba(255, 255, 255, 0.13);
+
+  --meridian-text: #eef6ff;
+  --meridian-text-soft: #cbd5e1;
   --meridian-muted: #7f91a6;
+  --meridian-muted-strong: #64748b;
+
   --meridian-accent: #7dd3fc;
   --meridian-accent-strong: #38bdf8;
+  --meridian-indigo: #818cf8;
+
+  --meridian-success: #6ee7b7;
+  --meridian-warning: #fcd34d;
+  --meridian-danger: #fda4af;
+
+  --meridian-radius-md: 0.875rem;
+  --meridian-radius-lg: 1.25rem;
+  --meridian-radius-xl: 1.75rem;
+  --meridian-radius-2xl: 2rem;
+
+  --meridian-shadow-sm: 0 16px 42px rgba(0, 0, 0, 0.18);
+  --meridian-shadow-lg: 0 30px 90px rgba(0, 0, 0, 0.28);
+
+  --background: var(--meridian-canvas);
+  --foreground: var(--meridian-text);
 }
 
 @theme inline {
@@ -20,15 +46,48 @@
 }
 
 html {
-  background: var(--background);
+  background: var(--meridian-canvas);
+  scroll-behavior: smooth;
 }
 
 body {
+  min-width: 320px;
   background:
-    radial-gradient(circle at 12% -10%, rgba(56, 189, 248, 0.08), transparent 30rem),
-    var(--background);
-  color: var(--foreground);
+    radial-gradient(circle at 12% -10%, rgba(56, 189, 248, 0.07), transparent 30rem),
+    var(--meridian-canvas);
+  color: var(--meridian-text);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+
+* {
+  border-color: var(--meridian-border);
+}
+
+a,
+button,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a {
+  touch-action: manipulation;
+}
+
+:focus-visible {
+  outline: none;
+}
+
+.meridian-grid-mask {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.021) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.021) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(to bottom, black 0%, rgba(0, 0, 0, 0.75) 38%, transparent 88%);
 }
 
 ::selection {
