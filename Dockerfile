@@ -4,6 +4,10 @@ FROM node:22-bookworm-slim AS base
 
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN npm install -g pnpm@11.20.0
 
 
@@ -45,10 +49,16 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3001
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=api-builder /app/node_modules ./node_modules
 COPY --from=api-builder /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=api-builder /app/apps/api/dist ./apps/api/dist
 COPY --from=api-builder /app/apps/api/package.json ./apps/api/package.json
+
+USER node
 
 EXPOSE 3001
 
