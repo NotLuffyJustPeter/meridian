@@ -50,4 +50,29 @@ describe('validateEnvironment', () => {
 
     expect(() => validateEnvironment(env)).toThrow('MFA_ENCRYPTION_KEY');
   });
+
+  it('accepts Mailjet HTTPS configuration', () => {
+    const env = {
+      ...validEnvironment(),
+      MAIL_PROVIDER: 'mailjet',
+      MAILJET_API_KEY: 'mailjet-public-key',
+      MAILJET_SECRET_KEY: 'mailjet-private-key',
+      MAIL_FROM_EMAIL: 'meridian@example.com',
+    };
+
+    expect(validateEnvironment(env)).toMatchObject({
+      MAIL_PROVIDER: 'mailjet',
+      MAILJET_API_URL: 'https://api.mailjet.com/v3.1/send',
+    });
+  });
+
+  it('rejects incomplete Mailjet configuration', () => {
+    const env = {
+      ...validEnvironment(),
+      MAIL_PROVIDER: 'mailjet',
+      MAILJET_API_KEY: 'mailjet-public-key',
+    };
+
+    expect(() => validateEnvironment(env)).toThrow('MAILJET_SECRET_KEY');
+  });
 });
