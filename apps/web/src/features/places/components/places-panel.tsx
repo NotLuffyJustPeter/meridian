@@ -1410,7 +1410,7 @@ function PlaceDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 backdrop-blur-sm sm:p-5"
+      className="fixed inset-0 z-[100] flex items-end justify-center overflow-hidden bg-black/75 p-0 backdrop-blur-sm sm:items-center sm:p-5"
       role="dialog"
       aria-modal="true"
       aria-label={
@@ -1419,7 +1419,7 @@ function PlaceDialog({
           : 'Add place'
       }
     >
-      <div className="flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[#0c1118] shadow-[0_30px_120px_rgba(0,0,0,0.65)]">
+      <div className="flex h-[100dvh] w-full max-w-3xl flex-col overflow-hidden border border-white/10 bg-[#0c1118] shadow-[0_30px_120px_rgba(0,0,0,0.65)] sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-[28px]">
         <header className="z-20 flex shrink-0 items-start justify-between border-b border-white/[0.07] bg-[#0c1118]/95 px-5 py-4 backdrop-blur-xl sm:px-6 sm:py-5">
           <div className="min-w-0 pr-4">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-300/70">
@@ -2068,7 +2068,7 @@ function PlaceDialog({
           )}
         </div>
 
-        <footer className="z-20 flex shrink-0 flex-col-reverse gap-2 border-t border-white/[0.07] bg-[#0c1118]/95 px-5 py-4 backdrop-blur-xl sm:flex-row sm:justify-end sm:px-6">
+        <footer className="z-20 flex shrink-0 flex-col-reverse gap-2 border-t border-white/[0.07] bg-[#0c1118]/95 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 backdrop-blur-xl sm:flex-row sm:justify-end sm:px-6 sm:py-4">
           <button
             type="button"
             onClick={onClose}

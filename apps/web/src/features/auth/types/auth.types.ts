@@ -21,13 +21,49 @@ export type ApiErrorResponse = {
   error?: string;
 };
 
-export type LoginApiData = {
+export type SuccessfulLoginApiData = {
   user: PublicUser;
   accessToken: string;
   refreshToken: string;
 };
 
+export type MfaRequiredApiData = {
+  mfaRequired: true;
+  challengeToken: string;
+};
+
+export type LoginApiData =
+  | SuccessfulLoginApiData
+  | MfaRequiredApiData;
+
 export type RefreshApiData = {
   accessToken: string;
   refreshToken: string;
+};
+export type SecurityStatus = {
+  password: {
+    enabled: boolean;
+  };
+  google: {
+    connected: boolean;
+    canDisconnect: boolean;
+  };
+  mfa: {
+    enabled: boolean;
+    recoveryCodesRemaining: number;
+  };
+};
+
+export type MfaEnrollmentData = {
+  secret: string;
+  otpauthUri: string;
+  qrCodeDataUrl: string;
+};
+
+export type MfaConfirmationData = {
+  status: {
+    enabled: boolean;
+    recoveryCodesRemaining: number;
+  };
+  recoveryCodes: string[];
 };

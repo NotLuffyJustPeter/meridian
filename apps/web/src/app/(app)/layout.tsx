@@ -1,6 +1,13 @@
-import type { ReactNode } from 'react';
+import type {
+  ReactNode,
+} from 'react';
 
-import { requireAuthenticatedUser } from '../../lib/auth/server-auth';
+import {
+  AppShell,
+} from '../../features/navigation/components/app-shell';
+import {
+  requireAuthenticatedUser,
+} from '../../lib/auth/server-auth';
 
 type AppLayoutProps = {
   children: ReactNode;
@@ -9,7 +16,14 @@ type AppLayoutProps = {
 export default async function AppLayout({
   children,
 }: AppLayoutProps) {
-  await requireAuthenticatedUser();
+  const user =
+    await requireAuthenticatedUser();
 
-  return children;
+  return (
+    <AppShell
+      user={user}
+    >
+      {children}
+    </AppShell>
+  );
 }

@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
@@ -9,13 +14,17 @@ import { UsersService } from '../users/users.service';
 import { AuthSessionsService } from './auth-sessions.service';
 import type {
   AccessTokenPayload,
+  AuthAttemptResult,
   LoginResult,
   PublicUser,
   RefreshResult,
   RefreshTokenPayload,
+  SecurityStatus,
 } from './auth.types';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { GoogleIdentityService } from './google-identity.service';
+import { MfaService } from './mfa.service';
 
 @Injectable()
 export class AuthService {
@@ -24,6 +33,8 @@ export class AuthService {
     private readonly authSessionsService: AuthSessionsService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly googleIdentityService: GoogleIdentityService,
+    private readonly mfaService: MfaService,
   ) {}
 
   async register(dto: RegisterDto): Promise<PublicUser> {
@@ -44,10 +55,10 @@ export class AuthService {
     return this.toPublicUser(user);
   }
 
-  async login(dto: LoginDto): Promise<LoginResult> {
+  async login(dto: LoginDto): Promise<AuthAttemptResult> {
     const user = await this.usersService.findByEmail(dto.email);
 
-    if (!user) {
+    if (!user || !user.passwordHash) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -57,12 +68,188 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const tokens = await this.createSession(user);
+    return this.completeFirstFactor(user);
+  }
+
+  async loginWithGoogle(credential: string): Promise<AuthAttemptResult> {
+    const identity = await this.googleIdentityService.verifyCredential(credential);
+
+    const federatedUser = await this.usersService.findByExternalIdentity(
+      'GOOGLE',
+      identity.providerSubject,
+    );
+
+    if (federatedUser) {
+      return this.completeFirstFactor(federatedUser);
+    }
+
+    const existingUser = await this.usersService.findByEmail(identity.email);
+
+    if (existingUser) {
+      throw new ConflictException(
+        'An account already exists with this email. Sign in with your password to link Google securely.',
+      );
+    }
+
+    const name = identity.name ?? this.getNameFromEmail(identity.email);
+
+    const user = await this.usersService.createWithExternalIdentity({
+      email: identity.email,
+      name,
+      provider: 'GOOGLE',
+      providerSubject: identity.providerSubject,
+    });
+
+    return this.completeFirstFactor(user);
+  }
+
+  async getSecurityStatus(userId: string): Promise<SecurityStatus> {
+    const user = await this.usersService.findById(userId);
+
+    if (!user) {
+      throw new UnauthorizedException('Authenticated user no longer exists');
+    }
+
+    const googleIdentity = await this.usersService.findExternalIdentityForUser(user.id, 'GOOGLE');
+
+    const hasPassword = Boolean(user.passwordHash);
+
+    const mfa = await this.mfaService.getStatus(user.id);
 
     return {
-      user: this.toPublicUser(user),
-      ...tokens,
+      password: {
+        enabled: hasPassword,
+      },
+      google: {
+        connected: googleIdentity !== null,
+        canDisconnect: googleIdentity !== null && hasPassword,
+      },
+      mfa,
     };
+  }
+
+  async linkGoogleIdentity(userId: string, credential: string): Promise<SecurityStatus> {
+    const user = await this.usersService.findById(userId);
+
+    if (!user) {
+      throw new UnauthorizedException('Authenticated user no longer exists');
+    }
+
+    const identity = await this.googleIdentityService.verifyCredential(credential);
+
+    if (user.email.trim().toLowerCase() !== identity.email.trim().toLowerCase()) {
+      throw new BadRequestException(
+        'Sign in to Google with the same email as your Meridian account.',
+      );
+    }
+
+    const identityBySubject = await this.usersService.findExternalIdentity(
+      'GOOGLE',
+      identity.providerSubject,
+    );
+
+    if (identityBySubject && identityBySubject.userId !== user.id) {
+      throw new ConflictException(
+        'This Google account is already linked to another Meridian account.',
+      );
+    }
+
+    const existingGoogleIdentity = await this.usersService.findExternalIdentityForUser(
+      user.id,
+      'GOOGLE',
+    );
+
+    if (existingGoogleIdentity) {
+      if (existingGoogleIdentity.providerSubject === identity.providerSubject) {
+        return this.getSecurityStatus(user.id);
+      }
+
+      throw new ConflictException(
+        'A different Google account is already linked to this Meridian account.',
+      );
+    }
+
+    await this.usersService.createExternalIdentity({
+      userId: user.id,
+      provider: 'GOOGLE',
+      providerSubject: identity.providerSubject,
+    });
+
+    return this.getSecurityStatus(user.id);
+  }
+
+  async unlinkGoogleIdentity(userId: string): Promise<SecurityStatus> {
+    const user = await this.usersService.findById(userId);
+
+    if (!user) {
+      throw new UnauthorizedException('Authenticated user no longer exists');
+    }
+
+    const googleIdentity = await this.usersService.findExternalIdentityForUser(user.id, 'GOOGLE');
+
+    if (!googleIdentity) {
+      return this.getSecurityStatus(user.id);
+    }
+
+    if (!user.passwordHash) {
+      throw new BadRequestException(
+        'Add a password before disconnecting Google so you do not lose access to Meridian.',
+      );
+    }
+
+    await this.usersService.deleteExternalIdentity(googleIdentity.id);
+
+    return this.getSecurityStatus(user.id);
+  }
+
+  async updateProfile(userId: string, name: string): Promise<PublicUser> {
+    const existingUser = await this.usersService.findById(userId);
+
+    if (!existingUser) {
+      throw new UnauthorizedException('Authenticated user no longer exists');
+    }
+
+    const user = await this.usersService.updateName(existingUser.id, name);
+
+    return this.toPublicUser(user);
+  }
+
+  async startMfaEnrollment(userId: string) {
+    const user = await this.usersService.findById(userId);
+
+    if (!user) {
+      throw new UnauthorizedException('Authenticated user no longer exists');
+    }
+
+    return this.mfaService.startEnrollment(user.id, user.email);
+  }
+
+  async confirmMfaEnrollment(userId: string, code: string) {
+    const result = await this.mfaService.confirmEnrollment(userId, code);
+
+    return result;
+  }
+
+  async verifyMfaChallenge(challengeToken: string, code: string): Promise<LoginResult> {
+    const userId = await this.mfaService.verifyLoginChallenge(challengeToken, code);
+
+    const user = await this.usersService.findById(userId);
+
+    if (!user) {
+      throw new UnauthorizedException('Authenticated user no longer exists');
+    }
+
+    return this.loginUser(user);
+  }
+
+  async regenerateMfaRecoveryCodes(userId: string, code: string): Promise<string[]> {
+    return this.mfaService.regenerateRecoveryCodes(userId, code);
+  }
+
+  async disableMfa(userId: string, code: string): Promise<SecurityStatus> {
+    await this.mfaService.disable(userId, code);
+
+    return this.getSecurityStatus(userId);
   }
 
   async refresh(refreshToken: string): Promise<RefreshResult> {
@@ -141,6 +328,26 @@ export class AuthService {
     }
 
     return this.toPublicUser(user);
+  }
+
+  private async completeFirstFactor(user: User): Promise<AuthAttemptResult> {
+    if (await this.mfaService.isEnabled(user.id)) {
+      return {
+        mfaRequired: true,
+        challengeToken: await this.mfaService.createLoginChallenge(user.id),
+      };
+    }
+
+    return this.loginUser(user);
+  }
+
+  private async loginUser(user: User): Promise<LoginResult> {
+    const tokens = await this.createSession(user);
+
+    return {
+      user: this.toPublicUser(user),
+      ...tokens,
+    };
   }
 
   private async createSession(user: User): Promise<{
@@ -256,6 +463,12 @@ export class AuthService {
     }
 
     return value;
+  }
+
+  private getNameFromEmail(email: string): string {
+    const localPart = email.split('@')[0]?.trim();
+
+    return localPart && localPart.length > 0 ? localPart : 'Traveler';
   }
 
   private toPublicUser(user: User): PublicUser {

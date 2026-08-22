@@ -18,6 +18,10 @@ enum UserRole {
   ADMIN
 }
 
+enum AuthProvider {
+  GOOGLE
+}
+
 enum TripStatus {
   DRAFT
   PLANNED
@@ -63,14 +67,18 @@ enum ExpenseCategory {
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
-  passwordHash String
+  passwordHash String?
   name         String
   role         UserRole @default(USER)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   authSessions    AuthSession[]
-  trips           Trip[]
+  identities      AuthIdentity[]
+  totpCredential  TotpCredential?
+  mfaChallenges       MfaChallenge[]
+  passwordResetTokens   PasswordResetToken[]
+  trips                 Trip[]
   tripMemberships TripMember[]
 
   @@map("users")
@@ -90,6 +98,90 @@ model AuthSession {
   @@index([userId])
   @@index([expiresAt])
   @@map("auth_sessions")
+}
+
+model AuthIdentity {
+  id              String       @id @default(uuid())
+  userId          String
+  provider        AuthProvider
+  providerSubject String
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerSubject])
+  @@unique([userId, provider])
+  @@index([userId])
+  @@map("auth_identities")
+}
+
+
+model TotpCredential {
+  id                  String    @id @default(uuid())
+  userId              String    @unique
+  secretCiphertext    String
+  secretIv            String
+  secretAuthTag       String
+  enabledAt           DateTime?
+  lastUsedTotpCounter Int?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recoveryCodes MfaRecoveryCode[]
+
+  @@index([userId, enabledAt])
+  @@map("totp_credentials")
+}
+
+model MfaRecoveryCode {
+  id           String    @id @default(uuid())
+  credentialId String
+  codeHash     String
+  usedAt       DateTime?
+  createdAt    DateTime  @default(now())
+
+  credential TotpCredential @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+
+  @@unique([credentialId, codeHash])
+  @@index([credentialId, usedAt])
+  @@map("mfa_recovery_codes")
+}
+
+model MfaChallenge {
+  id         String    @id @default(uuid())
+  userId     String
+  tokenHash  String    @unique
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([userId, consumedAt])
+  @@map("mfa_challenges")
+}
+
+
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([userId, usedAt])
+  @@map("password_reset_tokens")
 }
 
 model Trip {

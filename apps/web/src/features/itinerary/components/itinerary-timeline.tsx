@@ -1,10 +1,15 @@
 'use client';
 
 import {
+  MapPin,
+} from 'lucide-react';
+import {
   useEffect,
   useMemo,
   useState,
 } from 'react';
+
+import { useModalBehavior } from '../../../hooks/use-modal-behavior';
 
 import type {
   Activity,
@@ -21,6 +26,10 @@ import { useTripRealtime } from '../../realtime/hooks/use-trip-realtime';
 interface ItineraryTimelineProps {
   tripId: string;
   canEdit: boolean;
+  selectedPlaceId?: string | null;
+  onSelectPlace?: (
+    placeId: string,
+  ) => void;
 }
 
 type TimelineState =
@@ -545,6 +554,8 @@ function ActivityCard({
   onMoveDown,
   onEdit,
   onDelete,
+  selected,
+  onSelectPlace,
 }: {
   activity: Activity;
   isFirst: boolean;
@@ -555,6 +566,8 @@ function ActivityCard({
   onMoveDown: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  selected: boolean;
+  onSelectPlace?: () => void;
 }) {
   const category =
     CATEGORY_META[
@@ -562,9 +575,9 @@ function ActivityCard({
     ];
 
   return (
-    <div className="relative grid grid-cols-[82px_24px_minmax(0,1fr)] gap-3 md:grid-cols-[110px_32px_minmax(0,1fr)] md:gap-5">
-      <div className="pt-1 text-right">
-        <div className="font-mono text-xs font-medium text-white/75 md:text-sm">
+    <div className="relative grid min-w-0 grid-cols-[52px_14px_minmax(0,1fr)] gap-2 sm:grid-cols-[70px_20px_minmax(0,1fr)] sm:gap-3 md:grid-cols-[110px_32px_minmax(0,1fr)] md:gap-5">
+      <div className="min-w-0 pt-1 text-right">
+        <div className="break-words font-mono text-[10px] font-medium leading-4 text-white/75 sm:text-xs md:text-sm">
           {getActivityTime(
             activity,
           )}
@@ -579,21 +592,28 @@ function ActivityCard({
         <div className="relative z-10 mt-1.5 h-3 w-3 rounded-full border border-white/30 bg-[#111318] shadow-[0_0_0_5px_rgba(255,255,255,0.035)]" />
       </div>
 
-      <article className="group mb-7 overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.035] p-4 transition hover:border-white/[0.14] hover:bg-white/[0.05] md:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <article
+        className={[
+          'group mb-6 min-w-0 overflow-hidden rounded-2xl border p-3 transition sm:p-4 md:mb-7 md:p-5',
+          selected
+            ? 'border-sky-300/20 bg-sky-300/[0.055] shadow-[0_16px_42px_rgba(56,189,248,0.06)]'
+            : 'border-white/[0.08] bg-white/[0.035] hover:border-white/[0.14] hover:bg-white/[0.05]',
+        ].join(' ')}
+      >
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <h4 className="text-base font-semibold tracking-[-0.01em] text-white md:text-lg">
+            <h4 className="break-words text-sm font-semibold tracking-[-0.01em] text-white sm:text-base md:text-lg">
               {activity.title}
             </h4>
 
             {activity.location && (
-              <p className="mt-1 text-sm text-white/45">
+              <p className="mt-1 break-words text-xs text-white/45 sm:text-sm">
                 {activity.location}
               </p>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-start gap-1.5 sm:justify-end sm:gap-2">
             <span
               className={[
                 'rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.13em]',
@@ -602,6 +622,27 @@ function ActivityCard({
             >
               {category.label}
             </span>
+
+            {activity.placeId &&
+              onSelectPlace && (
+              <button
+                type="button"
+                onClick={
+                  onSelectPlace
+                }
+                className={[
+                  'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition',
+                  selected
+                    ? 'border-sky-300/20 bg-sky-300/[0.08] text-sky-100'
+                    : 'border-white/[0.08] bg-white/[0.03] text-slate-500 hover:border-sky-300/15 hover:text-sky-200',
+                ].join(' ')}
+              >
+                <MapPin className="h-3 w-3" />
+                {selected
+                  ? 'On map'
+                  : 'View on map'}
+              </button>
+            )}
 
             {canEdit && (
               <>
@@ -652,7 +693,7 @@ function ActivityCard({
         </div>
 
         {activity.description && (
-          <p className="mt-4 max-w-3xl text-sm leading-6 text-white/55">
+          <p className="mt-4 max-w-3xl break-words text-sm leading-6 text-white/55">
             {activity.description}
           </p>
         )}
@@ -663,7 +704,7 @@ function ActivityCard({
               Notes
             </div>
 
-            <p className="mt-1.5 text-sm leading-5 text-white/50">
+            <p className="mt-1.5 break-words text-sm leading-5 text-white/50">
               {activity.notes}
             </p>
           </div>
@@ -762,9 +803,16 @@ function ActivityDialog({
   const isEditing =
     dialog.mode === 'edit';
 
+  useModalBehavior({
+    open: true,
+    disabled:
+      submitting,
+    onClose,
+  });
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-end justify-center overflow-hidden bg-black/75 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label={
@@ -773,8 +821,8 @@ function ActivityDialog({
           : 'Add activity'
       }
     >
-      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[28px] border border-white/10 bg-[#0c1118] shadow-[0_30px_120px_rgba(0,0,0,0.65)]">
-        <div className="flex items-start justify-between border-b border-white/[0.07] px-6 py-5">
+      <div className="flex h-[100dvh] w-full max-w-2xl flex-col overflow-hidden border border-white/10 bg-[#0c1118] shadow-[0_30px_120px_rgba(0,0,0,0.65)] sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-[28px]">
+        <div className="z-20 flex shrink-0 items-start justify-between border-b border-white/[0.07] bg-[#0c1118]/95 px-5 py-4 backdrop-blur-xl sm:px-6 sm:py-5">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-300/70">
               Day{' '}
@@ -807,7 +855,7 @@ function ActivityDialog({
           </button>
         </div>
 
-        <div className="space-y-5 p-6">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6 sm:py-6">
           <label className="block">
             <span className="text-xs font-medium text-white/60">
               Title
@@ -1011,7 +1059,7 @@ function ActivityDialog({
           )}
         </div>
 
-        <div className="flex flex-col-reverse gap-3 border-t border-white/[0.07] px-6 py-5 sm:flex-row sm:justify-end">
+        <div className="z-20 flex shrink-0 flex-col-reverse gap-3 border-t border-white/[0.07] bg-[#0c1118]/95 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 backdrop-blur-xl sm:flex-row sm:justify-end sm:px-6 sm:py-5">
           <button
             type="button"
             onClick={onClose}
@@ -1113,6 +1161,8 @@ function DeleteDialog({
 export function ItineraryTimeline({
   tripId,
   canEdit,
+  selectedPlaceId = null,
+  onSelectPlace,
 }: ItineraryTimelineProps) {
   const [
     state,
@@ -1880,7 +1930,7 @@ export function ItineraryTimeline({
 
   return (
     <>
-      <section className="space-y-6">
+      <section className="min-w-0 space-y-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/35">
@@ -1892,10 +1942,7 @@ export function ItineraryTimeline({
             </h2>
 
             <p className="mt-2 max-w-2xl text-sm leading-6 text-white/45">
-              Build the journey
-              day by day and keep
-              every activity in one
-              clear timeline.
+              Shape each day while mapped activities stay connected to the places around them.
             </p>
           </div>
 
@@ -2035,7 +2082,7 @@ export function ItineraryTimeline({
             )}
           </div>
 
-          <div className="px-4 py-7 md:px-7 md:py-8">
+          <div className="min-w-0 px-3 py-6 sm:px-4 md:px-7 md:py-8">
             {orderedActivities.length >
             0 ? (
               <div>
@@ -2095,6 +2142,22 @@ export function ItineraryTimeline({
                           null,
                         );
                       }}
+                      selected={
+                        activity.placeId !==
+                          null &&
+                        activity.placeId ===
+                          selectedPlaceId
+                      }
+                      onSelectPlace={
+                        activity.placeId &&
+                        onSelectPlace
+                          ? () => {
+                              onSelectPlace(
+                                activity.placeId as string,
+                              );
+                            }
+                          : undefined
+                      }
                     />
                   ),
                 )}

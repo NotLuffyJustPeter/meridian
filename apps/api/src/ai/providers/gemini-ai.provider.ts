@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import {
@@ -116,6 +116,8 @@ function isActivityCategory(value: unknown): value is AiActivityCategory {
 
 @Injectable()
 export class GeminiAiProvider implements AiProvider {
+  private readonly logger = new Logger(GeminiAiProvider.name);
+
   constructor(private readonly configService: ConfigService) {}
 
   getModelName(): string {
@@ -170,7 +172,39 @@ export class GeminiAiProvider implements AiProvider {
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(15000),
       });
-    } catch {
+    } catch (error: unknown) {
+      const detail =
+        error instanceof Error ? `${error.name}: ${error.message}` : 'Unknown fetch failure';
+
+      const cause =
+        error instanceof Error &&
+        typeof error.cause === 'object' &&
+        error.cause !== null &&
+        'code' in error.cause &&
+        typeof (
+          error.cause as {
+            code?: unknown;
+          }
+        ).code === 'string'
+          ? (
+              error.cause as {
+                code: string;
+              }
+            ).code
+          : null;
+
+      this.logger.warn(
+        [
+          'Gemini network request failed',
+          `model=${model}`,
+          `detail=${detail}`,
+          cause ? `cause=${cause}` : null,
+        ]
+          .filter(Boolean)
+          .join(' | ')
+          .slice(0, 500),
+      );
+
       throw new AiProviderUnavailableError('Unable to reach Gemini');
     }
 

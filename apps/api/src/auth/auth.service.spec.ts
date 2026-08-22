@@ -6,11 +6,17 @@ import { beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals
 import { createHash } from 'node:crypto';
 import * as argon2 from 'argon2';
 
-import type { AuthSession, User } from '../generated/prisma/client';
-import { UsersService, type CreateUserData } from '../users/users.service';
+import type { AuthSession, AuthProvider, User } from '../generated/prisma/client';
+import {
+  UsersService,
+  type CreateExternalUserData,
+  type CreateUserData,
+} from '../users/users.service';
 import { AuthSessionsService, type CreateAuthSessionData } from './auth-sessions.service';
 import { AuthService } from './auth.service';
 import type { RefreshTokenPayload } from './auth.types';
+import { GoogleIdentityService, type VerifiedGoogleIdentity } from './google-identity.service';
+import { MfaService } from './mfa.service';
 
 const TEST_PASSWORD = 'Meridian123!';
 
@@ -21,7 +27,11 @@ const REFRESH_SECRET = 'unit-test-refresh-secret';
 type UsersServiceMock = {
   findByEmail: jest.Mock<(email: string) => Promise<User | null>>;
   findById: jest.Mock<(id: string) => Promise<User | null>>;
+  findByExternalIdentity: jest.Mock<
+    (provider: AuthProvider, providerSubject: string) => Promise<User | null>
+  >;
   create: jest.Mock<(data: CreateUserData) => Promise<User>>;
+  createWithExternalIdentity: jest.Mock<(data: CreateExternalUserData) => Promise<User>>;
 };
 
 type AuthSessionsServiceMock = {
@@ -42,6 +52,21 @@ type ConfigServiceMock = {
   get: jest.Mock<(key: string) => string | undefined>;
 };
 
+type GoogleIdentityServiceMock = {
+  verifyCredential: jest.Mock<(credential: string) => Promise<VerifiedGoogleIdentity>>;
+};
+
+type MfaServiceMock = {
+  isEnabled: jest.Mock<(userId: string) => Promise<boolean>>;
+  createLoginChallenge: jest.Mock<(userId: string) => Promise<string>>;
+  getStatus: jest.Mock<
+    (userId: string) => Promise<{
+      enabled: boolean;
+      recoveryCodesRemaining: number;
+    }>
+  >;
+};
+
 function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
@@ -58,6 +83,10 @@ describe('AuthService', () => {
   let jwtService: JwtServiceMock;
 
   let configService: ConfigServiceMock;
+
+  let googleIdentityService: GoogleIdentityServiceMock;
+
+  let mfaService: MfaServiceMock;
 
   const makeUser = (overrides: Partial<User> = {}): User => ({
     id: 'user-1',
@@ -84,6 +113,15 @@ describe('AuthService', () => {
     ...overrides,
   });
 
+  const makeGoogleIdentity = (
+    overrides: Partial<VerifiedGoogleIdentity> = {},
+  ): VerifiedGoogleIdentity => ({
+    providerSubject: 'google-subject-1',
+    email: 'google@meridian.local',
+    name: 'Google Traveler',
+    ...overrides,
+  });
+
   beforeAll(async () => {
     validPasswordHash = await argon2.hash(TEST_PASSWORD);
   });
@@ -94,7 +132,12 @@ describe('AuthService', () => {
 
       findById: jest.fn<(id: string) => Promise<User | null>>(),
 
+      findByExternalIdentity:
+        jest.fn<(provider: AuthProvider, providerSubject: string) => Promise<User | null>>(),
+
       create: jest.fn<(data: CreateUserData) => Promise<User>>(),
+
+      createWithExternalIdentity: jest.fn<(data: CreateExternalUserData) => Promise<User>>(),
     };
 
     authSessionsService = {
@@ -118,17 +161,35 @@ describe('AuthService', () => {
       get: jest.fn<(key: string) => string | undefined>((key) => {
         const values: Record<string, string> = {
           JWT_ACCESS_SECRET: ACCESS_SECRET,
-
           JWT_REFRESH_SECRET: REFRESH_SECRET,
-
           JWT_ACCESS_TTL_SECONDS: '900',
-
           JWT_REFRESH_TTL_SECONDS: '604800',
         };
 
         return values[key];
       }),
     };
+
+    googleIdentityService = {
+      verifyCredential: jest.fn<(credential: string) => Promise<VerifiedGoogleIdentity>>(),
+    };
+
+    mfaService = {
+      isEnabled: jest.fn<(userId: string) => Promise<boolean>>(),
+      createLoginChallenge: jest.fn<(userId: string) => Promise<string>>(),
+      getStatus: jest.fn<
+        (userId: string) => Promise<{
+          enabled: boolean;
+          recoveryCodesRemaining: number;
+        }>
+      >(),
+    };
+
+    mfaService.isEnabled.mockResolvedValue(false);
+    mfaService.getStatus.mockResolvedValue({
+      enabled: false,
+      recoveryCodesRemaining: 0,
+    });
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -148,6 +209,14 @@ describe('AuthService', () => {
         {
           provide: ConfigService,
           useValue: configService,
+        },
+        {
+          provide: GoogleIdentityService,
+          useValue: googleIdentityService,
+        },
+        {
+          provide: MfaService,
+          useValue: mfaService,
         },
       ],
     }).compile();
@@ -236,6 +305,23 @@ describe('AuthService', () => {
       expect(authSessionsService.create).not.toHaveBeenCalled();
     });
 
+    it('rejects a federated-only account on the password endpoint', async () => {
+      usersService.findByEmail.mockResolvedValue(
+        makeUser({
+          passwordHash: null,
+        }),
+      );
+
+      await expect(
+        authService.login({
+          email: 'google@meridian.local',
+          password: TEST_PASSWORD,
+        }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+
+      expect(authSessionsService.create).not.toHaveBeenCalled();
+    });
+
     it('rejects an incorrect password', async () => {
       usersService.findByEmail.mockResolvedValue(makeUser());
 
@@ -295,6 +381,126 @@ describe('AuthService', () => {
       expect(sessionData.refreshTokenHash).toBe(hashToken('refresh-token'));
 
       expect(sessionData.expiresAt).toBeInstanceOf(Date);
+    });
+  });
+
+  describe('loginWithGoogle', () => {
+    it('signs in a returning Google identity', async () => {
+      const identity = makeGoogleIdentity();
+
+      const user = makeUser({
+        email: identity.email,
+        name: identity.name ?? 'Traveler',
+        passwordHash: null,
+      });
+
+      googleIdentityService.verifyCredential.mockResolvedValue(identity);
+
+      usersService.findByExternalIdentity.mockResolvedValue(user);
+
+      jwtService.signAsync
+        .mockResolvedValueOnce('google-access-token')
+        .mockResolvedValueOnce('google-refresh-token');
+
+      authSessionsService.create.mockResolvedValue(makeSession('google-refresh-token'));
+
+      const result = await authService.loginWithGoogle('google-credential');
+
+      expect(usersService.findByExternalIdentity).toHaveBeenCalledWith(
+        'GOOGLE',
+        identity.providerSubject,
+      );
+
+      expect(usersService.findByEmail).not.toHaveBeenCalled();
+
+      if (!('user' in result)) {
+        throw new Error('Expected Google sign-in to complete without MFA');
+      }
+
+      expect(result.user.email).toBe(identity.email);
+
+      expect(result.accessToken).toBe('google-access-token');
+    });
+
+    it('creates a federated-only Meridian account for a new Google identity', async () => {
+      const identity = makeGoogleIdentity();
+
+      const user = makeUser({
+        email: identity.email,
+        name: identity.name ?? 'Traveler',
+        passwordHash: null,
+      });
+
+      googleIdentityService.verifyCredential.mockResolvedValue(identity);
+
+      usersService.findByExternalIdentity.mockResolvedValue(null);
+
+      usersService.findByEmail.mockResolvedValue(null);
+
+      usersService.createWithExternalIdentity.mockResolvedValue(user);
+
+      jwtService.signAsync
+        .mockResolvedValueOnce('new-google-access')
+        .mockResolvedValueOnce('new-google-refresh');
+
+      authSessionsService.create.mockResolvedValue(makeSession('new-google-refresh'));
+
+      const result = await authService.loginWithGoogle('google-credential');
+
+      expect(usersService.createWithExternalIdentity).toHaveBeenCalledWith({
+        email: identity.email,
+        name: identity.name ?? identity.email.split('@')[0] ?? 'Traveler',
+        provider: 'GOOGLE',
+        providerSubject: identity.providerSubject,
+      });
+
+      if (!('user' in result)) {
+        throw new Error('Expected new Google sign-in to complete without MFA');
+      }
+
+      expect(result.user.email).toBe(identity.email);
+    });
+
+    it('does not silently link Google to an existing password account', async () => {
+      const identity = makeGoogleIdentity({
+        email: 'test@meridian.local',
+      });
+
+      googleIdentityService.verifyCredential.mockResolvedValue(identity);
+
+      usersService.findByExternalIdentity.mockResolvedValue(null);
+
+      usersService.findByEmail.mockResolvedValue(makeUser());
+
+      await expect(authService.loginWithGoogle('google-credential')).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+
+      expect(usersService.createWithExternalIdentity).not.toHaveBeenCalled();
+
+      expect(authSessionsService.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('two-step verification', () => {
+    it('returns an MFA challenge instead of creating a session when MFA is enabled', async () => {
+      const user = makeUser();
+
+      usersService.findByEmail.mockResolvedValue(user);
+      mfaService.isEnabled.mockResolvedValue(true);
+      mfaService.createLoginChallenge.mockResolvedValue('mfa-challenge-token');
+
+      const result = await authService.login({
+        email: user.email,
+        password: TEST_PASSWORD,
+      });
+
+      expect(result).toEqual({
+        mfaRequired: true,
+        challengeToken: 'mfa-challenge-token',
+      });
+
+      expect(authSessionsService.create).not.toHaveBeenCalled();
     });
   });
 

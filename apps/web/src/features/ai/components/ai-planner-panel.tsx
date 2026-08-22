@@ -6,13 +6,13 @@ import {
   ChevronRight,
   Clock,
   CloudRain,
-  Compass,
   DollarSign,
   Loader2,
   MapPin,
   RefreshCw,
+  Send,
+  SlidersHorizontal,
   Sparkles,
-  Wallet,
 } from 'lucide-react';
 import {
   useMemo,
@@ -762,6 +762,14 @@ export function AiPlannerPanel({
     useState('');
 
   const [
+    lastPrompt,
+    setLastPrompt,
+  ] =
+    useState<string | null>(
+      null,
+    );
+
+  const [
     generation,
     setGeneration,
   ] =
@@ -910,7 +918,9 @@ const recommendations =
     );
   }
 
-  async function generateProposal() {
+  async function generateProposal(
+    promptOverride?: string,
+  ) {
     if (
       interests.length ===
       0
@@ -940,16 +950,27 @@ const recommendations =
       new Set(),
     );
 
+    const prompt =
+      (
+        promptOverride ??
+        notes
+      ).trim();
+
+    setLastPrompt(
+      prompt ||
+        `Help me improve my ${destination} itinerary.`,
+    );
+
     const input:
       GenerateAiRecommendationsInput =
       {
         pace,
         interests,
         budgetPreference,
-        ...(notes.trim()
+        ...(prompt
           ? {
               notes:
-                notes.trim(),
+                prompt,
             }
           : {}),
       };
@@ -1588,234 +1609,101 @@ const recommendations =
     }
   }
 
+  function submitComposer():
+    void {
+    if (
+      generation.status ===
+        'loading'
+    ) {
+      return;
+    }
+
+    const prompt =
+      notes.trim();
+
+    if (!prompt) {
+      return;
+    }
+
+    setNotes('');
+
+    void generateProposal(
+      prompt,
+    );
+  }
+
   const proposal =
     generation.status ===
     'success'
       ? generation.data
       : null;
 
+
+  const quickPrompts = [
+    'Build a balanced itinerary using my current trip context.',
+    'Make this trip feel more relaxed and reduce unnecessary travel.',
+    'Suggest food, culture and local experiences that fit naturally into the itinerary.',
+    'Find weather-aware alternatives without overloading the schedule.',
+  ];
+
   return (
-    <div className="py-9">
-      <section className="relative overflow-hidden rounded-[2rem] border border-sky-300/10 bg-[linear-gradient(135deg,#0b2232_0%,#102d3d_50%,#09141f_100%)] p-7 sm:p-9">
-        <div className="pointer-events-none absolute -right-24 -top-28 h-80 w-80 rounded-full border border-sky-200/10 bg-sky-300/[0.035]" />
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-5">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-300/10 bg-sky-300/[0.055] text-sky-200">
+              <Sparkles className="h-3.5 w-3.5" />
+            </span>
 
-        <div className="relative max-w-3xl">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-sky-300/15 bg-sky-300/[0.07] text-sky-200">
-            <Sparkles className="h-5 w-5" />
-          </div>
-
-          <p className="mt-7 text-xs font-semibold uppercase tracking-[0.2em] text-sky-300">
-            Meridian AI
-          </p>
-
-          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-white sm:text-4xl">
-            Build a smarter plan for {destination}.
-          </h2>
-
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-sky-50/50">
-            Meridian combines your existing itinerary, saved places, budget and available weather context to create a proposal you can review before anything changes.
-          </p>
-
-          <div className="mt-7 inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-black/10 px-4 py-3 text-xs text-slate-400">
-            <Compass className="h-4 w-4 text-sky-200/70" />
-            AI suggestions never overwrite your itinerary automatically.
-          </div>
-        </div>
-      </section>
-
-      <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]">
-        <div className="rounded-[1.75rem] border border-white/[0.07] bg-white/[0.025] p-6">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-            Travel style
-          </p>
-
-          <h3 className="mt-2 text-lg font-semibold tracking-[-0.03em] text-white">
-            Shape the proposal
-          </h3>
-
-          <div className="mt-6">
-            <label
-              htmlFor="ai-pace"
-              className="text-xs font-medium text-slate-400"
-            >
-              Pace
-            </label>
-
-            <select
-              id="ai-pace"
-              value={pace}
-              onChange={(event) =>
-                setPace(
-                  event.target.value as
-                    AiPace,
-                )
-              }
-              className="mt-2 w-full rounded-xl border border-white/[0.08] bg-[#09131e] px-3 py-2.5 text-sm text-white outline-none transition focus:border-sky-300/30"
-            >
-              {PACE_OPTIONS.map(
-                (option) => (
-                  <option
-                    key={
-                      option.value
-                    }
-                    value={
-                      option.value
-                    }
-                  >
-                    {option.label} — {option.description}
-                  </option>
-                ),
-              )}
-            </select>
-          </div>
-
-          <div className="mt-5">
-            <p className="text-xs font-medium text-slate-400">
-              Interests
-            </p>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              {INTERESTS.map(
-                (interest) => {
-                  const active =
-                    interests.includes(
-                      interest.value,
-                    );
-
-                  return (
-                    <button
-                      key={
-                        interest.value
-                      }
-                      type="button"
-                      onClick={() =>
-                        toggleInterest(
-                          interest.value,
-                        )
-                      }
-                      className={[
-                        'rounded-full border px-3 py-2 text-xs font-medium transition',
-                        active
-                          ? 'border-sky-300/20 bg-sky-300/[0.08] text-sky-100'
-                          : 'border-white/[0.08] bg-white/[0.025] text-slate-500 hover:text-slate-300',
-                      ].join(' ')}
-                    >
-                      {interest.label}
-                    </button>
-                  );
-                },
-              )}
+            <div className="max-w-[88%] rounded-2xl rounded-tl-md border border-white/[0.07] bg-white/[0.035] px-4 py-3">
+              <p className="text-sm leading-6 text-slate-300">
+                Tell me what you want to improve about {destination}. I can turn the result into real itinerary activities and map-linked places after you approve it.
+              </p>
             </div>
           </div>
 
-          <div className="mt-5">
-            <label
-              htmlFor="ai-budget"
-              className="text-xs font-medium text-slate-400"
-            >
-              Spending style
-            </label>
-
-            <select
-              id="ai-budget"
-              value={
-                budgetPreference
-              }
-              onChange={(event) =>
-                setBudgetPreference(
-                  event.target.value as
-                    AiBudgetPreference,
-                )
-              }
-              className="mt-2 w-full rounded-xl border border-white/[0.08] bg-[#09131e] px-3 py-2.5 text-sm text-white outline-none transition focus:border-sky-300/30"
-            >
-              {BUDGET_OPTIONS.map(
-                (option) => (
-                  <option
-                    key={
-                      option.value
-                    }
-                    value={
-                      option.value
-                    }
-                  >
-                    {option.label}
-                  </option>
-                ),
-              )}
-            </select>
-          </div>
-
-          <div className="mt-5">
-            <label
-              htmlFor="ai-notes"
-              className="text-xs font-medium text-slate-400"
-            >
-              Extra guidance
-            </label>
-
-            <textarea
-              id="ai-notes"
-              value={notes}
-              onChange={(event) =>
-                setNotes(
-                  event.target.value,
-                )
-              }
-              maxLength={500}
-              rows={4}
-              placeholder="Prefer local places, avoid overly touristy experiences..."
-              className="mt-2 w-full resize-none rounded-xl border border-white/[0.08] bg-[#09131e] px-3 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-700 focus:border-sky-300/30"
-            />
-          </div>
-
-          <button
-            type="button"
-            disabled={
-              generation.status ===
-                'loading' ||
-              interests.length ===
-                0
-            }
-            onClick={() =>
-              void generateProposal()
-            }
-            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {generation.status ===
-            'loading' ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Building proposal...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" />
-                Generate proposal
-              </>
-            )}
-          </button>
-
-          <p className="mt-3 text-center text-[11px] leading-5 text-slate-600">
-            Your current journey context is used only to create this recommendation preview.
-          </p>
-        </div>
-
-        <div>
           {generation.status ===
             'idle' && (
-            <div className="flex min-h-[31rem] items-center justify-center rounded-[1.75rem] border border-dashed border-white/[0.08] bg-white/[0.015] p-8 text-center">
-              <div className="max-w-sm">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.025] text-slate-500">
-                  <Sparkles className="h-5 w-5" />
-                </div>
+            <div className="pl-11">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+                Try asking
+              </p>
 
-                <h3 className="mt-5 text-lg font-semibold tracking-[-0.03em] text-white">
-                  Your proposal will appear here.
-                </h3>
+              <div className="flex flex-wrap gap-2">
+                {quickPrompts.map(
+                  (
+                    prompt,
+                    index,
+                  ) => (
+                    <button
+                      key={prompt}
+                      type="button"
+                      onClick={() => {
+                        void generateProposal(
+                          prompt,
+                        );
+                      }}
+                      className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2 text-left text-[11px] leading-5 text-slate-500 outline-none transition hover:border-sky-300/15 hover:bg-sky-300/[0.04] hover:text-sky-100 focus-visible:ring-2 focus-visible:ring-sky-300/20"
+                    >
+                      {index === 0
+                        ? 'Plan the trip'
+                        : index === 1
+                          ? 'Make it relaxed'
+                          : index === 2
+                            ? 'Food & culture'
+                            : 'Weather-safe ideas'}
+                    </button>
+                  ),
+                )}
+              </div>
+            </div>
+          )}
 
-                <p className="mt-3 text-sm leading-6 text-slate-500">
-                  Choose a pace, interests and budget style. Meridian will use the journey context you have already built.
+          {lastPrompt && (
+            <div className="flex justify-end">
+              <div className="max-w-[88%] rounded-2xl rounded-tr-md border border-sky-300/12 bg-sky-300/[0.07] px-4 py-3">
+                <p className="text-sm leading-6 text-sky-50/90">
+                  {lastPrompt}
                 </p>
               </div>
             </div>
@@ -1823,209 +1711,196 @@ const recommendations =
 
           {generation.status ===
             'loading' && (
-            <div className="min-h-[31rem] rounded-[1.75rem] border border-white/[0.07] bg-white/[0.02] p-6">
-              <div className="h-4 w-36 animate-pulse rounded-full bg-white/[0.05]" />
-              <div className="mt-6 h-20 animate-pulse rounded-2xl bg-white/[0.035]" />
-              <div className="mt-4 h-44 animate-pulse rounded-2xl bg-white/[0.035]" />
-              <div className="mt-4 h-44 animate-pulse rounded-2xl bg-white/[0.035]" />
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-300/10 bg-sky-300/[0.055] text-sky-200">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              </span>
+
+              <div className="rounded-2xl rounded-tl-md border border-white/[0.07] bg-white/[0.035] px-4 py-3">
+                <p className="text-sm text-slate-400">
+                  I&apos;m reviewing the journey and building a proposal…
+                </p>
+              </div>
             </div>
           )}
 
           {generation.status ===
             'error' && (
-            <div className="rounded-[1.75rem] border border-rose-300/10 bg-rose-300/[0.04] p-7">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-rose-200">
-                Proposal unavailable
-              </p>
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-rose-300/10 bg-rose-300/[0.05] text-rose-200">
+                <Sparkles className="h-3.5 w-3.5" />
+              </span>
 
-              <p className="mt-3 max-w-xl text-sm leading-6 text-slate-400">
-                {generation.error}
-              </p>
+              <div className="max-w-[88%] rounded-2xl rounded-tl-md border border-rose-300/10 bg-rose-300/[0.035] px-4 py-3">
+                <p className="text-sm leading-6 text-rose-100/80">
+                  {generation.error}
+                </p>
 
-              <button
-                type="button"
-                onClick={() =>
-                  void generateProposal()
-                }
-                className="mt-6 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/[0.09]"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Try again
-              </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void generateProposal(
+                      lastPrompt ??
+                        undefined,
+                    );
+                  }}
+                  className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-rose-100"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Try again
+                </button>
+              </div>
             </div>
           )}
 
           {proposal && (
-            <div>
-              <div className="rounded-[1.75rem] border border-white/[0.07] bg-white/[0.025] p-6">
-                <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <>
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-300/10 bg-sky-300/[0.055] text-sky-200">
+                  <Sparkles className="h-3.5 w-3.5" />
+                </span>
+
+                <div className="max-w-[92%] rounded-2xl rounded-tl-md border border-white/[0.07] bg-white/[0.035] px-4 py-3">
+                  <p className="text-sm font-semibold leading-6 text-white">
+                    {proposal.summary}
+                  </p>
+
+                  {proposal.insights.length >
+                    0 && (
+                    <div className="mt-3 space-y-2">
+                      {proposal.insights.map(
+                        (
+                          insight,
+                          index,
+                        ) => (
+                          <p
+                            key={`${insight}-${index}`}
+                            className="text-xs leading-5 text-slate-500"
+                          >
+                            • {insight}
+                          </p>
+                        ),
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="pl-0 sm:pl-11">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">
-                      AI proposal
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+                      Suggested changes
                     </p>
 
-                    <h3 className="mt-2 text-xl font-semibold tracking-[-0.035em] text-white">
-                      {proposal.summary}
-                    </h3>
-                  </div>
-
-                </div>
-
-                {proposal.insights.length >
-                  0 && (
-                  <div className="mt-5 grid gap-2">
-                    {proposal.insights.map(
-                      (
-                        insight,
-                        index,
-                      ) => (
-                        <div
-                          key={`${insight}-${index}`}
-                          className="flex gap-3 rounded-xl border border-white/[0.06] bg-black/10 px-4 py-3"
-                        >
-                          <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sky-200/60" />
-
-                          <p className="text-xs leading-5 text-slate-400">
-                            {insight}
-                          </p>
-                        </div>
-                      ),
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-4 flex flex-col gap-3 rounded-[1.4rem] border border-white/[0.07] bg-white/[0.02] p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs font-medium text-white">
-                    {selectedRecommendations.length} selected
-                  </p>
-
-                  <p className="mt-1 text-xs text-slate-500">
-                    Estimated selected cost ·{' '}
-                    {formatMoney(
-                      selectedTotal.toFixed(
-                        2,
-                      ),
-                      currency,
-                    )}
-                  </p>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSelectedIds(
-                        new Set(),
-                      )
-                    }
-                    className="rounded-xl border border-white/[0.08] px-3 py-2 text-xs font-medium text-slate-400 transition hover:text-white"
-                  >
-                    Clear
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSelectedIds(
-                        new Set(
-                          recommendations
-                            .filter(
-                              (item) =>
-                                !appliedIds.has(
-                                  item.id,
-                                ),
-                            )
-                            .map(
-                              (item) =>
-                                item.id,
-                            ),
+                    <p className="mt-1 text-xs text-slate-500">
+                      {selectedRecommendations.length} selected ·{' '}
+                      {formatMoney(
+                        selectedTotal.toFixed(
+                          2,
                         ),
-                      )
-                    }
-                    className="rounded-xl border border-white/[0.08] px-3 py-2 text-xs font-medium text-slate-300 transition hover:bg-white/[0.04]"
-                  >
-                    Select all
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-4 grid gap-3">
-                {recommendations.map(
-                  (
-                    recommendation,
-                  ) => (
-                    <RecommendationCard
-                      key={
-                        recommendation.id
-                      }
-                      recommendation={
-                        recommendation
-                      }
-                      selected={
-                        selectedIds.has(
-                          recommendation.id,
-                        )
-                      }
-                      applied={
-                        appliedIds.has(
-                          recommendation.id,
-                        )
-                      }
-                      onToggle={() =>
-                        toggleRecommendation(
-                          recommendation.id,
-                        )
-                      }
-                    />
-                  ),
-                )}
-              </div>
-
-              <div className="mt-5 rounded-[1.5rem] border border-white/[0.07] bg-white/[0.025] p-5">
-                <label className="mb-5 flex cursor-pointer items-start gap-3 rounded-xl border border-sky-300/10 bg-sky-300/[0.035] p-4">
-                  <input
-                    type="checkbox"
-                    checked={
-                      saveMappableLocations
-                    }
-                    onChange={(event) =>
-                      setSaveMappableLocations(
-                        event.target.checked,
-                      )
-                    }
-                    className="mt-0.5 h-4 w-4 accent-sky-300"
-                  />
-
-                  <span>
-                    <span className="flex items-center gap-2 text-sm font-medium text-white">
-                      <MapPin className="h-4 w-4 text-sky-200" />
-                      Save mappable locations to Places & Map
-                    </span>
-
-                    <span className="mt-1 block text-xs leading-5 text-slate-500">
-                      Meridian resolves selected AI locations with geocoding, reuses existing places when possible, and links the resulting marker to the activity.
-                    </span>
-                  </span>
-                </label>
-
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-300/10 bg-emerald-300/[0.05] text-emerald-200">
-                      <Wallet className="h-4 w-4" />
-                    </div>
-
-                    <div>
-                      <p className="text-sm font-medium text-white">
-                        Apply only what you want
-                      </p>
-
-                      <p className="mt-1 text-xs leading-5 text-slate-500">
-                        Selected recommendations become normal Meridian activities. AI never writes directly without this confirmation.
-                      </p>
-                    </div>
+                        currency,
+                      )}
+                    </p>
                   </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedIds(
+                          new Set(),
+                        )
+                      }
+                      className="rounded-lg border border-white/[0.07] px-2.5 py-1.5 text-[10px] font-medium text-slate-500 transition hover:text-white"
+                    >
+                      Clear
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedIds(
+                          new Set(
+                            recommendations
+                              .filter(
+                                (item) =>
+                                  !appliedIds.has(
+                                    item.id,
+                                  ),
+                              )
+                              .map(
+                                (item) =>
+                                  item.id,
+                              ),
+                          ),
+                        )
+                      }
+                      className="rounded-lg border border-white/[0.07] px-2.5 py-1.5 text-[10px] font-medium text-slate-400 transition hover:bg-white/[0.04]"
+                    >
+                      Select all
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid gap-3">
+                  {recommendations.map(
+                    (
+                      recommendation,
+                    ) => (
+                      <RecommendationCard
+                        key={
+                          recommendation.id
+                        }
+                        recommendation={
+                          recommendation
+                        }
+                        selected={
+                          selectedIds.has(
+                            recommendation.id,
+                          )
+                        }
+                        applied={
+                          appliedIds.has(
+                            recommendation.id,
+                          )
+                        }
+                        onToggle={() =>
+                          toggleRecommendation(
+                            recommendation.id,
+                          )
+                        }
+                      />
+                    ),
+                  )}
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
+                  <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={
+                        saveMappableLocations
+                      }
+                      onChange={(event) =>
+                        setSaveMappableLocations(
+                          event.target.checked,
+                        )
+                      }
+                      className="mt-0.5 h-4 w-4 accent-sky-300"
+                    />
+
+                    <span>
+                      <span className="flex items-center gap-2 text-xs font-medium text-white">
+                        <MapPin className="h-3.5 w-3.5 text-sky-200" />
+                        Add locations to Places & Map
+                      </span>
+
+                      <span className="mt-1 block text-[11px] leading-5 text-slate-600">
+                        When possible, Meridian geocodes the selected location, saves/reuses the Place, and links its marker to the new activity.
+                      </span>
+                    </span>
+                  </label>
 
                   <button
                     type="button"
@@ -2035,16 +1910,16 @@ const recommendations =
                       applyState.status ===
                         'applying'
                     }
-                    onClick={() =>
-                      void applySelected()
-                    }
-                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-sky-200 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-40"
+                    onClick={() => {
+                      void applySelected();
+                    }}
+                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sky-200 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {applyState.status ===
                     'applying' ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Applying...
+                        Adding to journey…
                       </>
                     ) : (
                       <>
@@ -2053,39 +1928,212 @@ const recommendations =
                       </>
                     )}
                   </button>
-                </div>
 
-                {applyState.status ===
-                  'success' && (
-                  <div className="mt-4 flex flex-col gap-3 rounded-xl border border-emerald-300/10 bg-emerald-300/[0.04] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-xs text-emerald-100/80">
+                  {applyState.status ===
+                    'success' && (
+                    <div className="mt-3 flex flex-col gap-2 rounded-xl border border-emerald-300/10 bg-emerald-300/[0.04] px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-[11px] leading-5 text-emerald-100/80">
+                        {applyState.message}
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={
+                          onOpenItinerary
+                        }
+                        className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-semibold text-emerald-100"
+                      >
+                        Open itinerary
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
+
+                  {applyState.status ===
+                    'error' && (
+                    <p className="mt-3 rounded-xl border border-rose-300/10 bg-rose-300/[0.04] px-3 py-3 text-[11px] leading-5 text-rose-100/80">
                       {applyState.message}
                     </p>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
 
-                    <button
-                      type="button"
-                      onClick={
-                        onOpenItinerary
+      <div className="shrink-0 border-t border-white/[0.07] bg-[#07111b]/96 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:px-5 sm:pb-4">
+        <details className="mb-3 rounded-xl border border-white/[0.06] bg-white/[0.02]">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-[11px] font-medium text-slate-500 [&::-webkit-details-marker]:hidden">
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            Planning preferences
+          </summary>
+
+          <div className="grid gap-4 border-t border-white/[0.055] p-3">
+            <label>
+              <span className="text-[10px] font-medium text-slate-500">
+                Pace
+              </span>
+
+              <select
+                value={pace}
+                onChange={(event) =>
+                  setPace(
+                    event.target.value as
+                      AiPace,
+                  )
+                }
+                className="mt-1.5 w-full rounded-xl border border-white/[0.08] bg-[#09131e] px-3 py-2.5 text-xs text-white outline-none focus:border-sky-300/30"
+              >
+                {PACE_OPTIONS.map(
+                  (option) => (
+                    <option
+                      key={
+                        option.value
                       }
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-100"
+                      value={
+                        option.value
+                      }
                     >
-                      Open itinerary
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
+                      {option.label} — {option.description}
+                    </option>
+                  ),
                 )}
+              </select>
+            </label>
 
-                {applyState.status ===
-                  'error' && (
-                  <p className="mt-4 rounded-xl border border-rose-300/10 bg-rose-300/[0.04] px-4 py-3 text-xs leading-5 text-rose-100/80">
-                    {applyState.message}
-                  </p>
+            <div>
+              <p className="text-[10px] font-medium text-slate-500">
+                Interests
+              </p>
+
+              <div className="mt-2 flex flex-wrap gap-2">
+                {INTERESTS.map(
+                  (interest) => {
+                    const selected =
+                      interests.includes(
+                        interest.value,
+                      );
+
+                    return (
+                      <button
+                        key={
+                          interest.value
+                        }
+                        type="button"
+                        aria-pressed={
+                          selected
+                        }
+                        onClick={() =>
+                          toggleInterest(
+                            interest.value,
+                          )
+                        }
+                        className={[
+                          'rounded-full border px-2.5 py-1.5 text-[10px] font-medium transition',
+                          selected
+                            ? 'border-sky-300/15 bg-sky-300/[0.07] text-sky-100'
+                            : 'border-white/[0.07] bg-white/[0.02] text-slate-600 hover:text-slate-300',
+                        ].join(' ')}
+                      >
+                        {
+                          interest.label
+                        }
+                      </button>
+                    );
+                  },
                 )}
               </div>
             </div>
-          )}
-        </div>
-      </section>
+
+            <label>
+              <span className="text-[10px] font-medium text-slate-500">
+                Spending style
+              </span>
+
+              <select
+                value={
+                  budgetPreference
+                }
+                onChange={(event) =>
+                  setBudgetPreference(
+                    event.target.value as
+                      AiBudgetPreference,
+                  )
+                }
+                className="mt-1.5 w-full rounded-xl border border-white/[0.08] bg-[#09131e] px-3 py-2.5 text-xs text-white outline-none focus:border-sky-300/30"
+              >
+                {BUDGET_OPTIONS.map(
+                  (option) => (
+                    <option
+                      key={
+                        option.value
+                      }
+                      value={
+                        option.value
+                      }
+                    >
+                      {
+                        option.label
+                      }
+                    </option>
+                  ),
+                )}
+              </select>
+            </label>
+          </div>
+        </details>
+
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            submitComposer();
+          }}
+          className="flex items-end gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.035] p-2 focus-within:border-sky-300/20"
+        >
+          <textarea
+            value={notes}
+            onChange={(event) =>
+              setNotes(
+                event.target.value,
+              )
+            }
+            onKeyDown={(event) => {
+              if (
+                event.key ===
+                  'Enter' &&
+                !event.shiftKey
+              ) {
+                event.preventDefault();
+                submitComposer();
+              }
+            }}
+            rows={1}
+            maxLength={1000}
+            placeholder={`Ask Meridian about ${destination}…`}
+            className="max-h-28 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm leading-5 text-white outline-none placeholder:text-slate-600"
+          />
+
+          <button
+            type="submit"
+            disabled={
+              generation.status ===
+                'loading' ||
+              notes.trim().length ===
+                0
+            }
+            aria-label="Send to Meridian"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-200 text-slate-950 transition hover:bg-sky-100 disabled:cursor-wait disabled:opacity-50"
+          >
+            {generation.status ===
+            'loading' ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

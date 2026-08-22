@@ -6,11 +6,46 @@ import { RealtimeTicketService } from './realtime-ticket.service';
 import type { RealtimeTicketPayload } from './realtime.types';
 import { TripGateway } from './trip.gateway';
 
-type TestSocket = Socket & {
+type TestSocket = Omit<Socket, 'data' | 'handshake'> & {
   data: {
     user?: RealtimeTicketPayload;
   };
+  handshake: Omit<Socket['handshake'], 'auth'> & {
+    auth: Record<string, unknown>;
+  };
 };
+
+type TestMiddleware = (socket: TestSocket, next: (error?: Error) => void) => void;
+
+type VerifyTicketMock = jest.Mock<Promise<RealtimeTicketPayload>, [string]>;
+
+type AccessibleTrip = {
+  id: string;
+  accessRole: 'EDITOR';
+};
+
+type FindTripMock = jest.Mock<Promise<AccessibleTrip>, [string, string]>;
+
+type AttachMock = jest.Mock<void, [Namespace]>;
+
+type RoomEmitMock = jest.Mock<void, [string, unknown]>;
+
+type NamespaceToMock = jest.Mock<
+  {
+    emit: RoomEmitMock;
+  },
+  [string]
+>;
+
+type NamespaceUseMock = jest.Mock<void, [TestMiddleware]>;
+
+type NextMock = jest.Mock<void, [Error?]>;
+
+type JoinMock = jest.Mock<Promise<void>, [string]>;
+
+type LeaveMock = jest.Mock<Promise<void>, [string]>;
+
+type SocketEmitMock = jest.Mock<boolean, [string, unknown]>;
 
 const USER_ONE: RealtimeTicketPayload = {
   sub: 'user-one',
@@ -26,13 +61,25 @@ const USER_TWO: RealtimeTicketPayload = {
   type: 'realtime',
 };
 
+function flushPromises(): Promise<void> {
+  return new Promise((resolve) => {
+    setImmediate(resolve);
+  });
+}
+
 describe('TripGateway', () => {
-  let verifyTicket: ReturnType<typeof jest.fn>;
-  let findAccessibleTripOrThrow: ReturnType<typeof jest.fn>;
-  let attach: ReturnType<typeof jest.fn>;
-  let namespaceUse: ReturnType<typeof jest.fn>;
-  let namespaceTo: ReturnType<typeof jest.fn>;
-  let roomEmit: ReturnType<typeof jest.fn>;
+  let verifyTicket: VerifyTicketMock;
+
+  let findAccessibleTripOrThrow: FindTripMock;
+
+  let attach: AttachMock;
+
+  let namespaceUse: NamespaceUseMock;
+
+  let namespaceTo: NamespaceToMock;
+
+  let roomEmit: RoomEmitMock;
+
   let gateway: TripGateway;
 
   function createSocket(
@@ -40,9 +87,11 @@ describe('TripGateway', () => {
     user?: RealtimeTicketPayload,
     ticket: unknown = 'valid-ticket',
   ) {
-    const join = jest.fn(async (_room: string) => undefined);
-    const leave = jest.fn(async (_room: string) => undefined);
-    const emit = jest.fn();
+    const join: JoinMock = jest.fn<Promise<void>, [string]>(() => Promise.resolve());
+
+    const leave: LeaveMock = jest.fn<Promise<void>, [string]>(() => Promise.resolve());
+
+    const emit: SocketEmitMock = jest.fn<boolean, [string, unknown]>(() => true);
 
     const socket = {
       id,
@@ -70,14 +119,18 @@ describe('TripGateway', () => {
   }
 
   beforeEach(() => {
-    verifyTicket = jest.fn(async (_ticket: string) => USER_ONE);
+    verifyTicket = jest.fn<Promise<RealtimeTicketPayload>, [string]>(() =>
+      Promise.resolve(USER_ONE),
+    );
 
-    findAccessibleTripOrThrow = jest.fn(async (_userId: string, _tripId: string) => ({
-      id: 'trip-one',
-      accessRole: 'EDITOR' as const,
-    }));
+    findAccessibleTripOrThrow = jest.fn<Promise<AccessibleTrip>, [string, string]>(() =>
+      Promise.resolve({
+        id: 'trip-one',
+        accessRole: 'EDITOR',
+      }),
+    );
 
-    attach = jest.fn();
+    attach = jest.fn<void, [Namespace]>();
 
     const realtimeTicketService = {
       verifyTicket,
@@ -93,13 +146,18 @@ describe('TripGateway', () => {
 
     gateway = new TripGateway(realtimeTicketService, tripsService, realtimePublisher);
 
-    roomEmit = jest.fn();
+    roomEmit = jest.fn<void, [string, unknown]>();
 
-    namespaceTo = jest.fn(() => ({
+    namespaceTo = jest.fn<
+      {
+        emit: RoomEmitMock;
+      },
+      [string]
+    >(() => ({
       emit: roomEmit,
     }));
 
-    namespaceUse = jest.fn();
+    namespaceUse = jest.fn<void, [TestMiddleware]>();
 
     const namespace = {
       use: namespaceUse,
@@ -109,41 +167,62 @@ describe('TripGateway', () => {
     gateway.afterInit(namespace);
   });
 
-  it('attaches the publisher and authenticates a valid realtime ticket', async () => {
+  it('attaches publisher and authenticates a valid ticket', async () => {
     expect(attach).toHaveBeenCalledTimes(1);
+
     expect(namespaceUse).toHaveBeenCalledTimes(1);
 
-    const middleware = namespaceUse.mock.calls[0]?.[0] as unknown as (
-      socket: TestSocket,
-      next: (error?: Error) => void,
-    ) => Promise<void>;
+    const middleware = namespaceUse.mock.calls[0]?.[0];
+
+    expect(middleware).toBeDefined();
+
+    if (!middleware) {
+      throw new Error('Realtime middleware was not registered');
+    }
 
     const { socket } = createSocket('socket-one');
-    const next = jest.fn();
 
-    await middleware(socket, next);
+    const next: NextMock = jest.fn<void, [Error?]>();
+
+    middleware(socket, next);
+
+    await flushPromises();
 
     expect(verifyTicket).toHaveBeenCalledWith('valid-ticket');
+
     expect(socket.data.user).toEqual(USER_ONE);
+
     expect(next).toHaveBeenCalledWith();
   });
 
-  it('rejects a connection without a realtime ticket', async () => {
-    const middleware = namespaceUse.mock.calls[0]?.[0] as unknown as (
-      socket: TestSocket,
-      next: (error?: Error) => void,
-    ) => Promise<void>;
+  it('rejects a connection without a ticket', async () => {
+    const middleware = namespaceUse.mock.calls[0]?.[0];
+
+    expect(middleware).toBeDefined();
+
+    if (!middleware) {
+      throw new Error('Realtime middleware was not registered');
+    }
 
     const { socket } = createSocket('socket-one', undefined, null);
 
-    const next = jest.fn();
+    const next: NextMock = jest.fn<void, [Error?]>();
 
-    await middleware(socket, next);
+    middleware(socket, next);
+
+    await flushPromises();
 
     expect(verifyTicket).not.toHaveBeenCalled();
+
     expect(next).toHaveBeenCalledTimes(1);
 
-    const error = next.mock.calls[0]?.[0] as Error | undefined;
+    const firstCall = next.mock.calls[0];
+
+    expect(firstCall).toBeDefined();
+
+    const error = firstCall?.[0];
+
+    expect(error).toBeInstanceOf(Error);
 
     expect(error?.message).toBe('Realtime ticket is required');
   });
@@ -174,10 +253,10 @@ describe('TripGateway', () => {
     });
   });
 
-  it('denies room access when the user cannot access the trip', async () => {
-    findAccessibleTripOrThrow.mockImplementationOnce(async () => {
-      throw new Error('Trip not found');
-    });
+  it('denies room access when user cannot access the trip', async () => {
+    findAccessibleTripOrThrow.mockImplementationOnce(() =>
+      Promise.reject(new Error('Trip not found')),
+    );
 
     const { socket, join, emit } = createSocket('socket-one', USER_ONE);
 
@@ -195,7 +274,7 @@ describe('TripGateway', () => {
     });
   });
 
-  it('counts unique users rather than browser tabs and updates presence on disconnect', async () => {
+  it('counts unique users and updates presence on disconnect', async () => {
     const firstTab = createSocket('socket-one', USER_ONE);
 
     const secondTab = createSocket('socket-two', USER_ONE);
@@ -203,7 +282,9 @@ describe('TripGateway', () => {
     const otherUser = createSocket('socket-three', USER_TWO);
 
     gateway.handleConnection(firstTab.socket);
+
     gateway.handleConnection(secondTab.socket);
+
     gateway.handleConnection(otherUser.socket);
 
     await gateway.joinTrip(firstTab.socket, {

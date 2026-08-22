@@ -112,6 +112,8 @@ export class NominatimGeocodingProvider implements GeocodingProvider {
 
           'user-agent': this.userAgent,
         },
+
+        signal: AbortSignal.timeout(8000),
       });
     } catch {
       throw new ServiceUnavailableException('Geocoding provider is unavailable');

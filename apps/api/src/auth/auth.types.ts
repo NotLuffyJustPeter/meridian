@@ -22,7 +22,28 @@ export type LoginResult = {
   refreshToken: string;
 };
 
+export type MfaRequiredResult = {
+  mfaRequired: true;
+  challengeToken: string;
+};
+
+export type AuthAttemptResult = LoginResult | MfaRequiredResult;
+
 export type RefreshResult = {
   accessToken: string;
   refreshToken: string;
+};
+
+export type SecurityStatus = {
+  password: {
+    enabled: boolean;
+  };
+  google: {
+    connected: boolean;
+    canDisconnect: boolean;
+  };
+  mfa: {
+    enabled: boolean;
+    recoveryCodesRemaining: number;
+  };
 };
