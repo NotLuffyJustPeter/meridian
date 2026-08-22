@@ -1,3 +1,4 @@
+import { minutes, Throttle } from '@nestjs/throttler';
 import {
   Body,
   Controller,
@@ -32,6 +33,7 @@ export class AuthController {
     private readonly passwordResetService: PasswordResetService,
   ) {}
 
+  @Throttle({ default: { limit: 5, ttl: minutes(15) } })
   @Post('register')
   async register(
     @Body()
@@ -47,6 +49,7 @@ export class AuthController {
   }
 
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 8, ttl: minutes(5) } })
   @Post('login')
   async login(
     @Body()
@@ -62,6 +65,7 @@ export class AuthController {
   }
 
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: minutes(5) } })
   @Post('google')
   async googleLogin(
     @Body()
@@ -77,6 +81,7 @@ export class AuthController {
   }
 
   @HttpCode(HttpStatus.ACCEPTED)
+  @Throttle({ default: { limit: 3, ttl: minutes(15) } })
   @Post('password/forgot')
   async forgotPassword(
     @Body()
@@ -92,6 +97,7 @@ export class AuthController {
   }
 
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: minutes(15) } })
   @Post('password/reset')
   async resetPassword(
     @Body()
@@ -121,6 +127,7 @@ export class AuthController {
     };
   }
 
+  @Throttle({ default: { limit: 5, ttl: minutes(10) } })
   @Post('mfa/enroll')
   @UseGuards(AccessTokenGuard)
   async startMfaEnrollment(
@@ -137,6 +144,7 @@ export class AuthController {
   }
 
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 8, ttl: minutes(5) } })
   @Post('mfa/confirm')
   @UseGuards(AccessTokenGuard)
   async confirmMfaEnrollment(
@@ -156,6 +164,7 @@ export class AuthController {
   }
 
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 8, ttl: minutes(5) } })
   @Post('mfa/verify')
   async verifyMfa(
     @Body()
@@ -171,6 +180,7 @@ export class AuthController {
   }
 
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: minutes(15) } })
   @Post('mfa/recovery-codes')
   @UseGuards(AccessTokenGuard)
   async regenerateRecoveryCodes(
@@ -195,6 +205,7 @@ export class AuthController {
   }
 
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: minutes(15) } })
   @Post('mfa/disable')
   @UseGuards(AccessTokenGuard)
   async disableMfa(
@@ -214,6 +225,7 @@ export class AuthController {
   }
 
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 60, ttl: minutes(5) } })
   @Post('refresh')
   async refresh(
     @Body()
@@ -292,6 +304,7 @@ export class AuthController {
   }
 
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: minutes(10) } })
   @Post('google/link')
   @UseGuards(AccessTokenGuard)
   async linkGoogle(

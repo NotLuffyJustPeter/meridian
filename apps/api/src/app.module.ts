@@ -13,6 +13,8 @@ import { PlacesModule } from './places/places.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { TripsModule } from './trips/trips.module';
 import { UsersModule } from './users/users.module';
+import { SecurityModule } from './security/security.module';
+import { validateEnvironment } from './security/environment.validation';
 import { WeatherModule } from './weather/weather.module';
 
 @Module({
@@ -20,8 +22,10 @@ import { WeatherModule } from './weather/weather.module';
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
+      validate: validateEnvironment,
     }),
 
+    SecurityModule,
     DatabaseModule,
     HealthModule,
     UsersModule,

@@ -6,6 +6,25 @@ import type {
 const DEFAULT_API_ORIGIN =
   'http://127.0.0.1:3001';
 
+const DEFAULT_API_TIMEOUT_MS =
+  25_000;
+
+function getApiTimeoutMs(): number {
+  const configured =
+    Number(
+      process.env
+        .API_REQUEST_TIMEOUT_MS,
+    );
+
+  return Number.isFinite(
+    configured,
+  ) &&
+    configured >=
+      1_000
+    ? configured
+    : DEFAULT_API_TIMEOUT_MS;
+}
+
 function getApiOrigin(): string {
   return (
     process.env.API_ORIGIN ??
@@ -47,6 +66,11 @@ export async function serverApiFetch<T>(
       ...init,
       headers,
       cache: 'no-store',
+      signal:
+        init.signal ??
+        AbortSignal.timeout(
+          getApiTimeoutMs(),
+        ),
     },
   );
 

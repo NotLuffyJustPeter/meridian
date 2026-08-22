@@ -1609,6 +1609,29 @@ const recommendations =
     }
   }
 
+  function submitComposer():
+    void {
+    if (
+      generation.status ===
+        'loading'
+    ) {
+      return;
+    }
+
+    const prompt =
+      notes.trim();
+
+    if (!prompt) {
+      return;
+    }
+
+    setNotes('');
+
+    void generateProposal(
+      prompt,
+    );
+  }
+
   const proposal =
     generation.status ===
     'success'
@@ -1656,9 +1679,6 @@ const recommendations =
                       key={prompt}
                       type="button"
                       onClick={() => {
-                        setNotes(
-                          prompt,
-                        );
                         void generateProposal(
                           prompt,
                         );
@@ -1719,7 +1739,10 @@ const recommendations =
                 <button
                   type="button"
                   onClick={() => {
-                    void generateProposal();
+                    void generateProposal(
+                      lastPrompt ??
+                        undefined,
+                    );
                   }}
                   className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-rose-100"
                 >
@@ -2064,7 +2087,7 @@ const recommendations =
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            void generateProposal();
+            submitComposer();
           }}
           className="flex items-end gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.035] p-2 focus-within:border-sky-300/20"
         >
@@ -2082,7 +2105,7 @@ const recommendations =
                 !event.shiftKey
               ) {
                 event.preventDefault();
-                void generateProposal();
+                submitComposer();
               }
             }}
             rows={1}
@@ -2095,7 +2118,9 @@ const recommendations =
             type="submit"
             disabled={
               generation.status ===
-              'loading'
+                'loading' ||
+              notes.trim().length ===
+                0
             }
             aria-label="Send to Meridian"
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-200 text-slate-950 transition hover:bg-sky-100 disabled:cursor-wait disabled:opacity-50"

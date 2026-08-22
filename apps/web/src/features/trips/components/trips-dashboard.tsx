@@ -8,8 +8,7 @@ import {
   Compass,
   MapPin,
   Plus,
-  Route,
-  Sparkles,
+  Route
 } from 'lucide-react';
 import {
   motion,

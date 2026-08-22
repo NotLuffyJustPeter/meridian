@@ -14,7 +14,7 @@ const decimal = (value: string) => ({
   toFixed: () => value,
 });
 
-type FindAccessibleMock = (
+type FindEditableMock = (
   ownerId: string,
   tripId: string,
 ) => Promise<{
@@ -43,20 +43,20 @@ type WeatherMock = (
 describe('JourneyContextService', () => {
   let service: JourneyContextService;
 
-  let findAccessible: jest.Mock<FindAccessibleMock>;
+  let findEditable: jest.Mock<FindEditableMock>;
 
   let findUnique: jest.Mock<TripQueryMock>;
 
   let getWeather: jest.Mock<WeatherMock>;
 
   beforeEach(() => {
-    findAccessible = jest.fn<FindAccessibleMock>();
+    findEditable = jest.fn<FindEditableMock>();
 
     findUnique = jest.fn<TripQueryMock>();
 
     getWeather = jest.fn<WeatherMock>();
 
-    findAccessible.mockResolvedValue({
+    findEditable.mockResolvedValue({
       id: TRIP_ID,
     });
 
@@ -147,7 +147,7 @@ describe('JourneyContextService', () => {
     } as unknown as PrismaService;
 
     const tripsService = {
-      findAccessibleTripOrThrow: findAccessible,
+      findEditableTripOrThrow: findEditable,
     } as unknown as TripsService;
 
     const weatherService = {
@@ -160,7 +160,7 @@ describe('JourneyContextService', () => {
   it('builds a normalized journey context from trip relations', async () => {
     const result = await service.build(OWNER_ID, TRIP_ID);
 
-    expect(findAccessible).toHaveBeenCalledWith(OWNER_ID, TRIP_ID);
+    expect(findEditable).toHaveBeenCalledWith(OWNER_ID, TRIP_ID);
 
     expect(result.trip.travelDates).toEqual(['2026-08-21', '2026-08-22', '2026-08-23']);
 

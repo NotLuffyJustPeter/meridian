@@ -102,13 +102,13 @@ function generateTotp(secret: string): string {
 
   const digest = createHmac('sha1', decodeBase32(secret)).update(message).digest();
 
-  const offset = digest[digest.length - 1]! & 0x0f;
+  const offset = digest[digest.length - 1] & 0x0f;
 
   const binary =
-    ((digest[offset]! & 0x7f) << 24) |
-    ((digest[offset + 1]! & 0xff) << 16) |
-    ((digest[offset + 2]! & 0xff) << 8) |
-    (digest[offset + 3]! & 0xff);
+    ((digest[offset] & 0x7f) << 24) |
+    ((digest[offset + 1] & 0xff) << 16) |
+    ((digest[offset + 2] & 0xff) << 8) |
+    (digest[offset + 3] & 0xff);
 
   return (binary % 1_000_000).toString().padStart(6, '0');
 }
@@ -269,7 +269,7 @@ describe('Auth API (e2e)', () => {
     initialized = true;
 
     await cleanDatabase();
-  });
+  }, 30000);
 
   beforeEach(async () => {
     await cleanDatabase();

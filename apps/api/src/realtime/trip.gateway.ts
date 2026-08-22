@@ -16,16 +16,32 @@ import { RealtimePublisherService } from './realtime-publisher.service';
 import { RealtimeTicketService } from './realtime-ticket.service';
 import type { RealtimeTicketPayload, TripPresenceEvent } from './realtime.types';
 
-type MeridianSocket = Socket & {
-  data: {
-    user?: RealtimeTicketPayload;
+type MeridianSocketData = {
+  user?: RealtimeTicketPayload;
+};
+
+type MeridianSocket = Omit<Socket, 'data' | 'handshake'> & {
+  data: MeridianSocketData;
+  handshake: Omit<Socket['handshake'], 'auth'> & {
+    auth: Record<string, unknown>;
   };
 };
+
+type NamespaceMiddleware = Parameters<Namespace['use']>[0];
+
+type NamespaceMiddlewareNext = Parameters<NamespaceMiddleware>[1];
+
+function realtimeCorsOrigins(): string[] {
+  return (process.env.CORS_ORIGIN ?? 'http://localhost:3000')
+    .split(',')
+    .map((origin) => origin.trim().replace(/\/$/, ''))
+    .filter(Boolean);
+}
 
 @WebSocketGateway({
   namespace: '/realtime',
   cors: {
-    origin: process.env.CORS_ORIGIN ?? 'http://localhost:3000',
+    origin: realtimeCorsOrigins(),
     credentials: true,
   },
 })
@@ -45,23 +61,11 @@ export class TripGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
   afterInit(namespace: Namespace): void {
     this.namespace = namespace;
+
     this.realtimePublisher.attach(namespace);
 
-    namespace.use(async (socket: MeridianSocket, next) => {
-      const ticket = socket.handshake.auth?.['ticket'];
-
-      if (typeof ticket !== 'string' || !ticket) {
-        next(new Error('Realtime ticket is required'));
-        return;
-      }
-
-      try {
-        socket.data.user = await this.realtimeTicketService.verifyTicket(ticket);
-
-        next();
-      } catch {
-        next(new Error('Invalid or expired realtime ticket'));
-      }
+    namespace.use((socket, next) => {
+      void this.authenticateSocket(socket as MeridianSocket, next);
     });
   }
 
@@ -71,11 +75,13 @@ export class TripGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
   handleDisconnect(client: MeridianSocket): void {
     const tripIds = this.socketTrips.get(client.id);
+
     const userId = client.data.user?.sub;
 
     if (tripIds && userId) {
       for (const tripId of tripIds) {
         this.removePresence(tripId, userId, client.id);
+
         this.emitPresence(tripId);
       }
     }
@@ -97,6 +103,7 @@ export class TripGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         tripId: dto.tripId,
         message: 'Realtime authentication is required',
       });
+
       return;
     }
 
@@ -110,6 +117,7 @@ export class TripGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       const joinedTrips = this.socketTrips.get(client.id) ?? new Set<string>();
 
       joinedTrips.add(dto.tripId);
+
       this.socketTrips.set(client.id, joinedTrips);
 
       this.addPresence(dto.tripId, user.sub, client.id);
@@ -146,7 +154,29 @@ export class TripGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     this.socketTrips.get(client.id)?.delete(dto.tripId);
 
     this.removePresence(dto.tripId, user.sub, client.id);
+
     this.emitPresence(dto.tripId);
+  }
+
+  private async authenticateSocket(
+    socket: MeridianSocket,
+    next: NamespaceMiddlewareNext,
+  ): Promise<void> {
+    const ticket = socket.handshake.auth['ticket'];
+
+    if (typeof ticket !== 'string' || !ticket) {
+      next(new Error('Realtime ticket is required'));
+
+      return;
+    }
+
+    try {
+      socket.data.user = await this.realtimeTicketService.verifyTicket(ticket);
+
+      next();
+    } catch {
+      next(new Error('Invalid or expired realtime ticket'));
+    }
   }
 
   private addPresence(tripId: string, userId: string, socketId: string): void {
@@ -155,7 +185,9 @@ export class TripGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     const sockets = users.get(userId) ?? new Set<string>();
 
     sockets.add(socketId);
+
     users.set(userId, sockets);
+
     this.tripPresence.set(tripId, users);
   }
 
