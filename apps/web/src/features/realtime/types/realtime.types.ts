@@ -1,8 +1,4 @@
-export type RealtimeConnectionStatus =
-  | 'connecting'
-  | 'connected'
-  | 'disconnected'
-  | 'error';
+export type RealtimeConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
 export interface RealtimeTicketResponse {
   ticket: string;
@@ -17,19 +13,17 @@ export interface TripPresenceEvent {
 export interface ItineraryChangedEvent {
   tripId: string;
   dayId: string;
-  type:
-    | 'created'
-    | 'updated'
-    | 'deleted'
-    | 'reordered';
+  type: 'created' | 'updated' | 'deleted' | 'reordered';
   activityId?: string;
+  occurredAt: string;
+}
+
+export interface BudgetChangedEvent {
+  tripId: string;
   occurredAt: string;
 }
 
 export interface TripJoinedEvent {
   tripId: string;
-  accessRole:
-    | 'OWNER'
-    | 'EDITOR'
-    | 'VIEWER';
+  accessRole: 'OWNER' | 'EDITOR' | 'VIEWER';
 }

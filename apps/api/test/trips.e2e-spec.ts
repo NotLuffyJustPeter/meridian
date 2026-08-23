@@ -376,6 +376,138 @@ describe('Trips API (e2e)', () => {
     expect(storedTrip).toBeNull();
   });
 
+  it('cascades connected journey data when the owner deletes a trip', async () => {
+    const loginA = await registerAndLogin(userA);
+    const loginB = await registerAndLogin(userB);
+
+    const trip = await createTrip(loginA.accessToken);
+
+    const day = await prisma.tripDay.create({
+      data: {
+        tripId: trip.id,
+        date: new Date('2026-10-10T00:00:00.000Z'),
+        dayNumber: 1,
+      },
+    });
+
+    const place = await prisma.place.create({
+      data: {
+        tripId: trip.id,
+        name: 'Duomo di Milano',
+        category: 'LANDMARK',
+      },
+    });
+
+    const activity = await prisma.activity.create({
+      data: {
+        tripDayId: day.id,
+        placeId: place.id,
+        title: 'Visit the Duomo',
+        category: 'SIGHTSEEING',
+        position: 0,
+      },
+    });
+
+    const budget = await prisma.budget.create({
+      data: {
+        tripId: trip.id,
+        totalAmount: '1500.00',
+      },
+    });
+
+    const limit = await prisma.budgetCategoryLimit.create({
+      data: {
+        budgetId: budget.id,
+        category: 'FOOD',
+        amount: '300.00',
+      },
+    });
+
+    const expense = await prisma.expense.create({
+      data: {
+        tripId: trip.id,
+        title: 'Dinner',
+        category: 'FOOD',
+        amount: '42.50',
+        spentAt: new Date('2026-10-10T19:00:00.000Z'),
+      },
+    });
+
+    const member = await prisma.tripMember.create({
+      data: {
+        tripId: trip.id,
+        userId: loginB.user.id,
+        role: 'VIEWER',
+      },
+    });
+
+    await request(app.getHttpServer())
+      .delete(`/api/v1/trips/${trip.id}`)
+      .set('Authorization', `Bearer ${loginA.accessToken}`)
+      .expect(204);
+
+    const [
+      storedTrip,
+      storedDay,
+      storedPlace,
+      storedActivity,
+      storedBudget,
+      storedLimit,
+      storedExpense,
+      storedMember,
+    ] = await Promise.all([
+      prisma.trip.findUnique({
+        where: {
+          id: trip.id,
+        },
+      }),
+      prisma.tripDay.findUnique({
+        where: {
+          id: day.id,
+        },
+      }),
+      prisma.place.findUnique({
+        where: {
+          id: place.id,
+        },
+      }),
+      prisma.activity.findUnique({
+        where: {
+          id: activity.id,
+        },
+      }),
+      prisma.budget.findUnique({
+        where: {
+          id: budget.id,
+        },
+      }),
+      prisma.budgetCategoryLimit.findUnique({
+        where: {
+          id: limit.id,
+        },
+      }),
+      prisma.expense.findUnique({
+        where: {
+          id: expense.id,
+        },
+      }),
+      prisma.tripMember.findUnique({
+        where: {
+          id: member.id,
+        },
+      }),
+    ]);
+
+    expect(storedTrip).toBeNull();
+    expect(storedDay).toBeNull();
+    expect(storedPlace).toBeNull();
+    expect(storedActivity).toBeNull();
+    expect(storedBudget).toBeNull();
+    expect(storedLimit).toBeNull();
+    expect(storedExpense).toBeNull();
+    expect(storedMember).toBeNull();
+  });
+
   it('regenerates empty itinerary days when trip dates change', async () => {
     const loginA = await registerAndLogin(userA);
 

@@ -15,6 +15,7 @@ import {
 import type { AccessTokenPayload } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
+import { RealtimePublisherService } from '../realtime/realtime-publisher.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { ExpensesService } from './expenses.service';
@@ -22,10 +23,13 @@ import { ExpensesService } from './expenses.service';
 @Controller('trips/:tripId/expenses')
 @UseGuards(AccessTokenGuard)
 export class ExpensesController {
-  constructor(private readonly expensesService: ExpensesService) {}
+  constructor(
+    private readonly expensesService: ExpensesService,
+    private readonly realtimePublisher: RealtimePublisherService,
+  ) {}
 
   @Post()
-  create(
+  async create(
     @CurrentUser()
     user: AccessTokenPayload,
 
@@ -40,7 +44,11 @@ export class ExpensesController {
     @Body()
     dto: CreateExpenseDto,
   ) {
-    return this.expensesService.create(user.sub, tripId, dto);
+    const result = await this.expensesService.create(user.sub, tripId, dto);
+
+    this.realtimePublisher.publishBudgetChanged({ tripId });
+
+    return result;
   }
 
   @Get()
@@ -84,7 +92,7 @@ export class ExpensesController {
   }
 
   @Patch(':expenseId')
-  update(
+  async update(
     @CurrentUser()
     user: AccessTokenPayload,
 
@@ -107,7 +115,11 @@ export class ExpensesController {
     @Body()
     dto: UpdateExpenseDto,
   ) {
-    return this.expensesService.update(user.sub, tripId, expenseId, dto);
+    const result = await this.expensesService.update(user.sub, tripId, expenseId, dto);
+
+    this.realtimePublisher.publishBudgetChanged({ tripId });
+
+    return result;
   }
 
   @Delete(':expenseId')
@@ -133,5 +145,7 @@ export class ExpensesController {
     expenseId: string,
   ): Promise<void> {
     await this.expensesService.remove(user.sub, tripId, expenseId);
+
+    this.realtimePublisher.publishBudgetChanged({ tripId });
   }
 }

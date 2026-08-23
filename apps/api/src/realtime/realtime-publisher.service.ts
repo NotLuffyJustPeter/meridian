@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Namespace } from 'socket.io';
 
-import type { ItineraryChangedEvent } from './realtime.types';
+import type { BudgetChangedEvent, ItineraryChangedEvent } from './realtime.types';
 
 @Injectable()
 export class RealtimePublisherService {
@@ -16,6 +16,13 @@ export class RealtimePublisherService {
       ...event,
       occurredAt: new Date().toISOString(),
     } satisfies ItineraryChangedEvent);
+  }
+
+  publishBudgetChanged(event: Omit<BudgetChangedEvent, 'occurredAt'>): void {
+    this.namespace?.to(this.tripRoom(event.tripId)).emit('budget:changed', {
+      ...event,
+      occurredAt: new Date().toISOString(),
+    } satisfies BudgetChangedEvent);
   }
 
   private tripRoom(tripId: string): string {

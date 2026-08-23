@@ -48,9 +48,31 @@ export class OpenMeteoWeatherProvider implements WeatherProvider {
       return null;
     }
 
+    const candidates = Array.from(
+      new Set([
+        normalizedQuery,
+        ...normalizedQuery
+          .split(',')
+          .map((part) => part.trim())
+          .filter((part) => part.length > 0),
+      ]),
+    );
+
+    for (const candidate of candidates) {
+      const location = await this.resolveLocationCandidate(candidate);
+
+      if (location) {
+        return location;
+      }
+    }
+
+    return null;
+  }
+
+  private async resolveLocationCandidate(query: string): Promise<WeatherLocation | null> {
     const url = new URL(GEOCODING_ENDPOINT);
 
-    url.searchParams.set('name', normalizedQuery);
+    url.searchParams.set('name', query);
     url.searchParams.set('count', '1');
     url.searchParams.set('language', 'en');
     url.searchParams.set('format', 'json');
@@ -76,10 +98,13 @@ export class OpenMeteoWeatherProvider implements WeatherProvider {
     }
 
     const name = asString(firstResult['name']);
-
     const latitude = asFiniteNumber(firstResult['latitude']);
-
     const longitude = asFiniteNumber(firstResult['longitude']);
+    const featureCode = asString(firstResult['feature_code']);
+
+    if (featureCode?.startsWith('PCL')) {
+      return null;
+    }
 
     if (!name || latitude === null || longitude === null) {
       throw new WeatherProviderUnavailableError('Open-Meteo returned incomplete location data');
