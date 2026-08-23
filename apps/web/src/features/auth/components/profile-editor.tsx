@@ -275,9 +275,6 @@ export function ProfileEditor({
                 <p className="mt-1 truncate text-xs text-slate-500">
                   {user.email}
                 </p>
-                <p className="mt-2 text-[11px] leading-5 text-slate-600">
-                  Email changes require a separate verification flow, so this identifier is read-only for now.
-                </p>
               </div>
             </div>
           </div>

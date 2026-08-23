@@ -14,6 +14,11 @@ export interface ItineraryChangedEvent {
   occurredAt: string;
 }
 
+export interface BudgetChangedEvent {
+  tripId: string;
+  occurredAt: string;
+}
+
 export interface TripPresenceEvent {
   tripId: string;
   onlineUsers: number;

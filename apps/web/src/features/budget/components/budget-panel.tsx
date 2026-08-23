@@ -1,18 +1,10 @@
 'use client';
 
-import {
-  CircleAlert,
-  CircleCheck,
-  Trash2,
-  X,
-} from 'lucide-react';
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { CircleAlert, CircleCheck, Trash2, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { useModalBehavior } from '../../../hooks/use-modal-behavior';
+import { useTripRealtime } from '../../realtime/hooks/use-trip-realtime';
 import {
   EXPENSE_CATEGORIES,
   type BudgetOverview,
@@ -102,10 +94,7 @@ function readErrorMessage(payload: unknown, fallback: string): string {
     return message;
   }
 
-  if (
-    Array.isArray(message) &&
-    message.every((item) => typeof item === 'string')
-  ) {
+  if (Array.isArray(message) && message.every((item) => typeof item === 'string')) {
     return message.join(', ');
   }
 
@@ -120,9 +109,7 @@ async function readJson(response: Response): Promise<unknown> {
   }
 }
 
-async function fetchBudgetWorkspace(
-  tripId: string,
-): Promise<{
+async function fetchBudgetWorkspace(tripId: string): Promise<{
   overview: BudgetOverview;
   expenses: Expense[];
 }> {
@@ -139,21 +126,11 @@ async function fetchBudgetWorkspace(
   const expensesPayload = await readJson(expensesResponse);
 
   if (!overviewResponse.ok) {
-    throw new Error(
-      readErrorMessage(
-        overviewPayload,
-        'Unable to load budget overview.',
-      ),
-    );
+    throw new Error(readErrorMessage(overviewPayload, 'Unable to load budget overview.'));
   }
 
   if (!expensesResponse.ok) {
-    throw new Error(
-      readErrorMessage(
-        expensesPayload,
-        'Unable to load expenses.',
-      ),
-    );
+    throw new Error(readErrorMessage(expensesPayload, 'Unable to load expenses.'));
   }
 
   return {
@@ -162,14 +139,10 @@ async function fetchBudgetWorkspace(
   };
 }
 
-function createLimitDrafts(
-  overview: BudgetOverview,
-): Record<ExpenseCategory, string> {
+function createLimitDrafts(overview: BudgetOverview): Record<ExpenseCategory, string> {
   return Object.fromEntries(
     EXPENSE_CATEGORIES.map((category) => {
-      const item = overview.categories.find(
-        (entry) => entry.category === category,
-      );
+      const item = overview.categories.find((entry) => entry.category === category);
 
       return [category, item?.limitAmount ?? ''];
     }),
@@ -177,9 +150,7 @@ function createLimitDrafts(
 }
 
 function getLoadErrorMessage(error: unknown): string {
-  return error instanceof Error
-    ? error.message
-    : 'Budget service is currently unavailable.';
+  return error instanceof Error ? error.message : 'Budget service is currently unavailable.';
 }
 
 function formatMoney(value: string | null, currency: string): string {
@@ -227,16 +198,13 @@ function formatShortDate(value: string): string {
 }
 
 function toDateTimeLocal(date: Date): string {
-  const local = new Date(
-    date.getTime() - date.getTimezoneOffset() * 60_000,
-  );
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
 
   return local.toISOString().slice(0, 16);
 }
 
 function ProgressBar({ value }: { value: number | null }) {
-  const normalized =
-    value === null ? 0 : Math.max(0, Math.min(value, 100));
+  const normalized = value === null ? 0 : Math.max(0, Math.min(value, 100));
 
   return (
     <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
@@ -248,44 +216,24 @@ function ProgressBar({ value }: { value: number | null }) {
   );
 }
 
-function MetricCard({
-  label,
-  value,
-  helper,
-}: {
-  label: string;
-  value: string;
-  helper: string;
-}) {
+function MetricCard({ label, value, helper }: { label: string; value: string; helper: string }) {
   return (
     <div className="rounded-[1.4rem] border border-white/[0.07] bg-white/[0.025] p-5 transition hover:border-white/[0.11] hover:bg-white/[0.035]">
       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
         {label}
       </p>
 
-      <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">
-        {value}
-      </p>
+      <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">{value}</p>
 
-      <p className="mt-2 text-xs leading-5 text-slate-500">
-        {helper}
-      </p>
+      <p className="mt-2 text-xs leading-5 text-slate-500">{helper}</p>
     </div>
   );
 }
 
-function SpendingTrendChart({
-  expenses,
-  currency,
-}: {
-  expenses: Expense[];
-  currency: string;
-}) {
+function SpendingTrendChart({ expenses, currency }: { expenses: Expense[]; currency: string }) {
   const series = useMemo(() => {
     const ordered = [...expenses].sort(
-      (left, right) =>
-        new Date(left.spentAt).getTime() -
-        new Date(right.spentAt).getTime(),
+      (left, right) => new Date(left.spentAt).getTime() - new Date(right.spentAt).getTime(),
     );
 
     return ordered.reduce<
@@ -295,17 +243,14 @@ function SpendingTrendChart({
         total: number;
       }>
     >((series, expense) => {
-      const previousTotal =
-        series.at(-1)?.total ?? 0;
+      const previousTotal = series.at(-1)?.total ?? 0;
 
       return [
         ...series,
         {
           id: expense.id,
           date: expense.spentAt,
-          total:
-            previousTotal +
-            Number(expense.amount),
+          total: previousTotal + Number(expense.amount),
         },
       ];
     }, []);
@@ -341,18 +286,14 @@ function SpendingTrendChart({
 
   const points = series.map((item, index) => {
     const x =
-      series.length === 1
-        ? left + plotWidth / 2
-        : left + (index / (series.length - 1)) * plotWidth;
+      series.length === 1 ? left + plotWidth / 2 : left + (index / (series.length - 1)) * plotWidth;
     const y = top + plotHeight - (item.total / max) * plotHeight;
 
     return { ...item, x, y };
   });
 
   const linePath = points
-    .map((point, index) =>
-      `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`,
-    )
+    .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
     .join(' ');
 
   const areaPath = `${linePath} L ${points.at(-1)?.x ?? left} ${height - bottom} L ${points[0]?.x ?? left} ${height - bottom} Z`;
@@ -365,9 +306,7 @@ function SpendingTrendChart({
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             Spending pace
           </p>
-          <p className="mt-1 text-sm font-medium text-white">
-            Cumulative spend
-          </p>
+          <p className="mt-1 text-sm font-medium text-white">Cumulative spend</p>
         </div>
 
         <div className="text-right">
@@ -457,39 +396,19 @@ function CategoryDonut({
     .filter((category) => category.value > 0)
     .sort((left, right) => right.value - left.value);
 
-  const total = entries.reduce(
-    (sum, item) =>
-      sum + item.value,
-    0,
-  );
+  const total = entries.reduce((sum, item) => sum + item.value, 0);
 
-  const segments = entries.map(
-    (item, index) => {
-      const spentBefore = entries
-        .slice(0, index)
-        .reduce(
-          (sum, entry) =>
-            sum + entry.value,
-          0,
-        );
+  const segments = entries.map((item, index) => {
+    const spentBefore = entries.slice(0, index).reduce((sum, entry) => sum + entry.value, 0);
 
-      const start =
-        total > 0
-          ? (spentBefore / total) *
-            100
-          : 0;
+    const start = total > 0 ? (spentBefore / total) * 100 : 0;
 
-      const size =
-        total > 0
-          ? (item.value / total) *
-            100
-          : 0;
+    const size = total > 0 ? (item.value / total) * 100 : 0;
 
-      const end = start + size;
+    const end = start + size;
 
-      return `${CATEGORY_COLORS[item.category]} ${start.toFixed(2)}% ${end.toFixed(2)}%`;
-    },
-  );
+    return `${CATEGORY_COLORS[item.category]} ${start.toFixed(2)}% ${end.toFixed(2)}%`;
+  });
 
   const background =
     segments.length > 0
@@ -522,9 +441,7 @@ function CategoryDonut({
 
         <div className="w-full space-y-3">
           {entries.length === 0 ? (
-            <p className="text-xs leading-5 text-slate-500">
-              No category data yet.
-            </p>
+            <p className="text-xs leading-5 text-slate-500">No category data yet.</p>
           ) : (
             entries.slice(0, 4).map((item) => (
               <div key={item.category} className="flex items-center gap-3">
@@ -556,10 +473,7 @@ function CategoryPressure({
 }) {
   const entries = categories
     .filter((category) => category.limitAmount !== null)
-    .sort(
-      (left, right) =>
-        (right.usagePercentage ?? 0) - (left.usagePercentage ?? 0),
-    )
+    .sort((left, right) => (right.usagePercentage ?? 0) - (left.usagePercentage ?? 0))
     .slice(0, 4);
 
   return (
@@ -820,7 +734,8 @@ function DeleteExpenseDialog({
           Delete expense?
         </h3>
         <p className="mt-2 text-sm leading-6 text-white/45">
-          “{expense.title}” ({formatMoney(expense.amount, currency)}) will be permanently removed from this journey.
+          “{expense.title}” ({formatMoney(expense.amount, currency)}) will be permanently removed
+          from this journey.
         </p>
 
         {error && (
@@ -852,10 +767,7 @@ function DeleteExpenseDialog({
   );
 }
 
-export function BudgetPanel({
-  tripId,
-  canEdit,
-}: BudgetPanelProps) {
+export function BudgetPanel({ tripId, canEdit }: BudgetPanelProps) {
   const [state, setState] = useState<LoadState>({
     status: 'loading',
     overview: null,
@@ -875,9 +787,10 @@ export function BudgetPanel({
   const [notice, setNotice] = useState<Notice>(null);
   const [limitDrafts, setLimitDrafts] = useState<Record<ExpenseCategory, string>>(
     () =>
-      Object.fromEntries(
-        EXPENSE_CATEGORIES.map((category) => [category, '']),
-      ) as Record<ExpenseCategory, string>,
+      Object.fromEntries(EXPENSE_CATEGORIES.map((category) => [category, ''])) as Record<
+        ExpenseCategory,
+        string
+      >,
   );
   const [savingLimit, setSavingLimit] = useState<ExpenseCategory | null>(null);
   const [limitError, setLimitError] = useState<string | null>(null);
@@ -903,6 +816,13 @@ export function BudgetPanel({
       });
     }
   }
+
+  useTripRealtime({
+    tripId,
+    onBudgetChanged: () => {
+      void reload();
+    },
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -975,14 +895,11 @@ export function BudgetPanel({
     setBudgetError(null);
 
     try {
-      const response = await fetch(
-        `/api/trips/${encodeURIComponent(tripId)}/budget`,
-        {
-          method: 'PUT',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ totalAmount: amount }),
-        },
-      );
+      const response = await fetch(`/api/trips/${encodeURIComponent(tripId)}/budget`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ totalAmount: amount }),
+      });
       const payload = await readJson(response);
 
       if (!response.ok) {
@@ -1022,20 +939,17 @@ export function BudgetPanel({
     setExpenseError(null);
 
     try {
-      const response = await fetch(
-        `/api/trips/${encodeURIComponent(tripId)}/expenses`,
-        {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            title,
-            category: expenseForm.category,
-            amount,
-            spentAt: new Date(expenseForm.spentAt).toISOString(),
-            notes: expenseForm.notes.trim() || undefined,
-          }),
-        },
-      );
+      const response = await fetch(`/api/trips/${encodeURIComponent(tripId)}/expenses`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          category: expenseForm.category,
+          amount,
+          spentAt: new Date(expenseForm.spentAt).toISOString(),
+          notes: expenseForm.notes.trim() || undefined,
+        }),
+      });
       const payload = await readJson(response);
 
       if (!response.ok) {
@@ -1110,9 +1024,7 @@ export function BudgetPanel({
       const payload = await readJson(response);
 
       if (!response.ok) {
-        setLimitError(
-          readErrorMessage(payload, 'Unable to save category limit.'),
-        );
+        setLimitError(readErrorMessage(payload, 'Unable to save category limit.'));
         return;
       }
 
@@ -1140,9 +1052,7 @@ export function BudgetPanel({
 
       if (!response.ok) {
         const payload = await readJson(response);
-        setLimitError(
-          readErrorMessage(payload, 'Unable to clear category limit.'),
-        );
+        setLimitError(readErrorMessage(payload, 'Unable to clear category limit.'));
         return;
       }
 
@@ -1212,9 +1122,7 @@ export function BudgetPanel({
     <section className="py-7 sm:py-8">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300">
-            Budget
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300">Budget</p>
           <h2 className="mt-2 max-w-3xl text-2xl font-semibold tracking-[-0.04em] text-white sm:text-3xl">
             Keep the journey financially on course.
           </h2>
@@ -1245,7 +1153,9 @@ export function BudgetPanel({
         <MetricCard
           label="Total budget"
           value={formatMoney(totals.budgetAmount, currency)}
-          helper={overview.configured ? 'Planned for this journey' : 'Set a budget to start tracking'}
+          helper={
+            overview.configured ? 'Planned for this journey' : 'Set a budget to start tracking'
+          }
         />
         <MetricCard
           label="Spent"
@@ -1265,11 +1175,7 @@ export function BudgetPanel({
         />
         <MetricCard
           label="Used"
-          value={
-            totals.usagePercentage === null
-              ? '—'
-              : `${totals.usagePercentage.toFixed(2)}%`
-          }
+          value={totals.usagePercentage === null ? '—' : `${totals.usagePercentage.toFixed(2)}%`}
           helper="Share of total budget"
         />
       </div>
@@ -1454,9 +1360,7 @@ export function BudgetPanel({
             </p>
 
             <div className="mt-5">
-              <label className="text-xs font-medium text-slate-400">
-                Total budget
-              </label>
+              <label className="text-xs font-medium text-slate-400">Total budget</label>
 
               {canEdit ? (
                 <>
@@ -1478,9 +1382,7 @@ export function BudgetPanel({
                     </button>
                   </div>
                   {budgetError && (
-                    <p className="mt-3 text-xs leading-5 text-rose-200">
-                      {budgetError}
-                    </p>
+                    <p className="mt-3 text-xs leading-5 text-rose-200">{budgetError}</p>
                   )}
                 </>
               ) : (
@@ -1488,9 +1390,7 @@ export function BudgetPanel({
                   <p className="text-sm font-semibold text-white">
                     {formatMoney(totals.budgetAmount, currency)}
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Read-only budget access
-                  </p>
+                  <p className="mt-1 text-xs text-slate-500">Read-only budget access</p>
                 </div>
               )}
             </div>

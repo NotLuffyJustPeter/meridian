@@ -159,5 +159,29 @@ export function validateEnvironment(env: Env): Env {
 
   booleanValue(env, 'SMTP_SECURE');
 
+  const mailProvider = stringValue(env, 'MAIL_PROVIDER') ?? 'smtp';
+
+  if (mailProvider !== 'smtp' && mailProvider !== 'mailjet') {
+    throw new Error('MAIL_PROVIDER must be smtp or mailjet');
+  }
+
+  result.MAIL_PROVIDER = mailProvider;
+
+  if (mailProvider === 'mailjet') {
+    required(env, 'MAILJET_API_KEY');
+    required(env, 'MAILJET_SECRET_KEY');
+
+    const fromEmail = required(env, 'MAIL_FROM_EMAIL');
+
+    if (!fromEmail.includes('@')) {
+      throw new Error('MAIL_FROM_EMAIL must be a valid email address');
+    }
+
+    const apiUrl = stringValue(env, 'MAILJET_API_URL') ?? 'https://api.mailjet.com/v3.1/send';
+
+    validUrl(apiUrl, 'MAILJET_API_URL', ['https:']);
+    result.MAILJET_API_URL = apiUrl;
+  }
+
   return result;
 }

@@ -14,6 +14,7 @@ import {
 import type { AccessTokenPayload } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
+import { RealtimePublisherService } from '../realtime/realtime-publisher.service';
 import { BudgetService } from './budget.service';
 import { UpsertBudgetDto } from './dto/upsert-budget.dto';
 import { UpsertCategoryLimitDto } from './dto/upsert-category-limit.dto';
@@ -21,7 +22,10 @@ import { UpsertCategoryLimitDto } from './dto/upsert-category-limit.dto';
 @Controller('trips/:tripId/budget')
 @UseGuards(AccessTokenGuard)
 export class BudgetController {
-  constructor(private readonly budgetService: BudgetService) {}
+  constructor(
+    private readonly budgetService: BudgetService,
+    private readonly realtimePublisher: RealtimePublisherService,
+  ) {}
 
   @Get()
   getBudget(
@@ -32,12 +36,16 @@ export class BudgetController {
   }
 
   @Put()
-  upsertBudget(
+  async upsertBudget(
     @CurrentUser() user: AccessTokenPayload,
     @Param('tripId', new ParseUUIDPipe({ version: '4' })) tripId: string,
     @Body() dto: UpsertBudgetDto,
   ) {
-    return this.budgetService.upsertBudget(user.sub, tripId, dto);
+    const result = await this.budgetService.upsertBudget(user.sub, tripId, dto);
+
+    this.realtimePublisher.publishBudgetChanged({ tripId });
+
+    return result;
   }
 
   @Get('overview')
@@ -57,13 +65,17 @@ export class BudgetController {
   }
 
   @Put('categories/:category')
-  upsertCategoryLimit(
+  async upsertCategoryLimit(
     @CurrentUser() user: AccessTokenPayload,
     @Param('tripId', new ParseUUIDPipe({ version: '4' })) tripId: string,
     @Param('category') category: string,
     @Body() dto: UpsertCategoryLimitDto,
   ) {
-    return this.budgetService.upsertCategoryLimit(user.sub, tripId, category, dto);
+    const result = await this.budgetService.upsertCategoryLimit(user.sub, tripId, category, dto);
+
+    this.realtimePublisher.publishBudgetChanged({ tripId });
+
+    return result;
   }
 
   @Delete('categories/:category')
@@ -74,5 +86,7 @@ export class BudgetController {
     @Param('category') category: string,
   ): Promise<void> {
     await this.budgetService.removeCategoryLimit(user.sub, tripId, category);
+
+    this.realtimePublisher.publishBudgetChanged({ tripId });
   }
 }

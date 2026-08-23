@@ -1,19 +1,11 @@
-
 'use client';
 
-import {
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
-import type {
-  Socket,
-} from 'socket.io-client';
+import { useEffect, useRef, useState } from 'react';
+import type { Socket } from 'socket.io-client';
 
-import {
-  createRealtimeSocket,
-} from '../lib/realtime-client';
+import { createRealtimeSocket } from '../lib/realtime-client';
 import type {
+  BudgetChangedEvent,
   ItineraryChangedEvent,
   RealtimeConnectionStatus,
   RealtimeTicketResponse,
@@ -23,53 +15,28 @@ import type {
 
 interface UseTripRealtimeOptions {
   tripId: string;
-  onItineraryChanged: () => void;
+  onItineraryChanged?: () => void;
+  onBudgetChanged?: () => void;
 }
 
-const RETRY_DELAY_MS =
-  3000;
+const RETRY_DELAY_MS = 3000;
 
-function isRecord(
-  value: unknown,
-): value is Record<
-  string,
-  unknown
-> {
-  return (
-    typeof value ===
-      'object' &&
-    value !== null
-  );
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
 
-function readTicket(
-  payload: unknown,
-): RealtimeTicketResponse | null {
+function readTicket(payload: unknown): RealtimeTicketResponse | null {
   if (!isRecord(payload)) {
     return null;
   }
 
-  const candidate =
-    isRecord(
-      payload['data'],
-    )
-      ? payload['data']
-      : payload;
+  const candidate = isRecord(payload['data']) ? payload['data'] : payload;
 
-  const ticket =
-    candidate['ticket'];
+  const ticket = candidate['ticket'];
 
-  const expiresInSeconds =
-    candidate[
-      'expiresInSeconds'
-    ];
+  const expiresInSeconds = candidate['expiresInSeconds'];
 
-  if (
-    typeof ticket !==
-      'string' ||
-    typeof expiresInSeconds !==
-      'number'
-  ) {
+  if (typeof ticket !== 'string' || typeof expiresInSeconds !== 'number') {
     return null;
   }
 
@@ -79,52 +46,32 @@ function readTicket(
   };
 }
 
-async function requestRealtimeTicket():
-  Promise<string> {
-  const response =
-    await fetch(
-      '/api/realtime/ticket',
-      {
-        method:
-          'POST',
-        cache:
-          'no-store',
-      },
-    );
+async function requestRealtimeTicket(): Promise<string> {
+  const response = await fetch('/api/realtime/ticket', {
+    method: 'POST',
+    cache: 'no-store',
+  });
 
-  const rawBody =
-    await response.text();
+  const rawBody = await response.text();
 
-  let payload:
-    unknown = null;
+  let payload: unknown = null;
 
   if (rawBody) {
     try {
-      payload =
-        JSON.parse(
-          rawBody,
-        ) as unknown;
+      payload = JSON.parse(rawBody) as unknown;
     } catch {
-      payload =
-        null;
+      payload = null;
     }
   }
 
   if (!response.ok) {
-    throw new Error(
-      'Unable to create realtime ticket',
-    );
+    throw new Error('Unable to create realtime ticket');
   }
 
-  const ticketResponse =
-    readTicket(
-      payload,
-    );
+  const ticketResponse = readTicket(payload);
 
   if (!ticketResponse) {
-    throw new Error(
-      'Realtime ticket response is invalid',
-    );
+    throw new Error('Realtime ticket response is invalid');
   }
 
   return ticketResponse.ticket;
@@ -133,153 +80,93 @@ async function requestRealtimeTicket():
 export function useTripRealtime({
   tripId,
   onItineraryChanged,
+  onBudgetChanged,
 }: UseTripRealtimeOptions): {
-  status:
-    RealtimeConnectionStatus;
+  status: RealtimeConnectionStatus;
   onlineUsers: number;
 } {
-  const [
-    status,
-    setStatus,
-  ] =
-    useState<
-      RealtimeConnectionStatus
-    >(
-      'connecting',
-    );
+  const [status, setStatus] = useState<RealtimeConnectionStatus>('connecting');
 
-  const [
-    onlineUsers,
-    setOnlineUsers,
-  ] =
-    useState(
-      0,
-    );
+  const [onlineUsers, setOnlineUsers] = useState(0);
 
-  const callbackRef =
-    useRef(
-      onItineraryChanged,
-    );
+  const itineraryCallbackRef = useRef(onItineraryChanged);
+
+  const budgetCallbackRef = useRef(onBudgetChanged);
 
   useEffect(() => {
-    callbackRef.current =
-      onItineraryChanged;
-  }, [
-    onItineraryChanged,
-  ]);
+    itineraryCallbackRef.current = onItineraryChanged;
+  }, [onItineraryChanged]);
 
   useEffect(() => {
-    let cancelled =
-      false;
+    budgetCallbackRef.current = onBudgetChanged;
+  }, [onBudgetChanged]);
 
-    let socket:
-      Socket | null =
-      null;
+  useEffect(() => {
+    let cancelled = false;
 
-    let retryTimer:
-      ReturnType<
-        typeof setTimeout
-      > | null =
-      null;
+    let socket: Socket | null = null;
 
-    let refreshingTicket =
-      false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
-    function clearRetry():
-      void {
-      if (
-        retryTimer !==
-        null
-      ) {
-        clearTimeout(
-          retryTimer,
-        );
+    let refreshingTicket = false;
 
-        retryTimer =
-          null;
+    function clearRetry(): void {
+      if (retryTimer !== null) {
+        clearTimeout(retryTimer);
+
+        retryTimer = null;
       }
     }
 
-    function disposeSocket():
-      void {
+    function disposeSocket(): void {
       if (!socket) {
         return;
       }
 
       socket.removeAllListeners();
 
-      if (
-        socket.connected
-      ) {
-        socket.emit(
-          'trip:leave',
-          {
-            tripId,
-          },
-        );
+      if (socket.connected) {
+        socket.emit('trip:leave', {
+          tripId,
+        });
       }
 
       socket.disconnect();
 
-      socket =
-        null;
+      socket = null;
     }
 
-    function scheduleRestart():
-      void {
-      if (
-        cancelled ||
-        retryTimer !==
-          null
-      ) {
+    function scheduleRestart(): void {
+      if (cancelled || retryTimer !== null) {
         return;
       }
 
-      setStatus(
-        'disconnected',
-      );
+      setStatus('disconnected');
 
-      retryTimer =
-        setTimeout(
-          () => {
-            retryTimer =
-              null;
+      retryTimer = setTimeout(() => {
+        retryTimer = null;
 
-            if (
-              cancelled
-            ) {
-              return;
-            }
+        if (cancelled) {
+          return;
+        }
 
-            disposeSocket();
+        disposeSocket();
 
-            void start();
-          },
-          RETRY_DELAY_MS,
-        );
+        void start();
+      }, RETRY_DELAY_MS);
     }
 
-    async function refreshSocketTicket():
-      Promise<void> {
-      if (
-        cancelled ||
-        !socket ||
-        refreshingTicket
-      ) {
+    async function refreshSocketTicket(): Promise<void> {
+      if (cancelled || !socket || refreshingTicket) {
         return;
       }
 
-      refreshingTicket =
-        true;
+      refreshingTicket = true;
 
       try {
-        const ticket =
-          await requestRealtimeTicket();
+        const ticket = await requestRealtimeTicket();
 
-        if (
-          cancelled ||
-          !socket
-        ) {
+        if (cancelled || !socket) {
           return;
         }
 
@@ -293,168 +180,94 @@ export function useTripRealtime({
           scheduleRestart();
         }
       } finally {
-        refreshingTicket =
-          false;
+        refreshingTicket = false;
       }
     }
 
-    function registerSocketListeners(
-      currentSocket:
-        Socket,
-    ): void {
-      currentSocket.on(
-        'connect',
-        () => {
-          if (
-            cancelled ||
-            socket !==
-              currentSocket
-          ) {
-            return;
-          }
+    function registerSocketListeners(currentSocket: Socket): void {
+      currentSocket.on('connect', () => {
+        if (cancelled || socket !== currentSocket) {
+          return;
+        }
 
-          clearRetry();
+        clearRetry();
 
-          setStatus(
-            'connected',
-          );
+        setStatus('connected');
 
-          currentSocket.emit(
-            'trip:join',
-            {
-              tripId,
-            },
-          );
-        },
-      );
+        currentSocket.emit('trip:join', {
+          tripId,
+        });
+      });
 
-      currentSocket.on(
-        'trip:joined',
-        (
-          event:
-            TripJoinedEvent,
-        ) => {
-          if (
-            event.tripId !==
-              tripId
-          ) {
-            return;
-          }
+      currentSocket.on('trip:joined', (event: TripJoinedEvent) => {
+        if (event.tripId !== tripId) {
+          return;
+        }
 
-          callbackRef.current();
-        },
-      );
+        itineraryCallbackRef.current?.();
+        budgetCallbackRef.current?.();
+      });
 
-      currentSocket.on(
-        'trip:presence',
-        (
-          event:
-            TripPresenceEvent,
-        ) => {
-          if (
-            event.tripId ===
-            tripId
-          ) {
-            setOnlineUsers(
-              event.onlineUsers,
-            );
-          }
-        },
-      );
+      currentSocket.on('trip:presence', (event: TripPresenceEvent) => {
+        if (event.tripId === tripId) {
+          setOnlineUsers(event.onlineUsers);
+        }
+      });
 
-      currentSocket.on(
-        'itinerary:changed',
-        (
-          event:
-            ItineraryChangedEvent,
-        ) => {
-          if (
-            event.tripId ===
-            tripId
-          ) {
-            callbackRef.current();
-          }
-        },
-      );
+      currentSocket.on('itinerary:changed', (event: ItineraryChangedEvent) => {
+        if (event.tripId === tripId) {
+          itineraryCallbackRef.current?.();
+        }
+      });
 
-      currentSocket.on(
-        'trip:error',
-        () => {
-          if (!cancelled) {
-            setStatus(
-              'error',
-            );
-          }
-        },
-      );
+      currentSocket.on('budget:changed', (event: BudgetChangedEvent) => {
+        if (event.tripId === tripId) {
+          budgetCallbackRef.current?.();
+        }
+      });
 
-      currentSocket.on(
-        'disconnect',
-        (
-          reason,
-        ) => {
-          if (
-            cancelled ||
-            socket !==
-              currentSocket
-          ) {
-            return;
-          }
+      currentSocket.on('trip:error', () => {
+        if (!cancelled) {
+          setStatus('error');
+        }
+      });
 
-          setOnlineUsers(
-            0,
-          );
+      currentSocket.on('disconnect', (reason) => {
+        if (cancelled || socket !== currentSocket) {
+          return;
+        }
 
-          setStatus(
-            'disconnected',
-          );
+        setOnlineUsers(0);
 
-          if (
-            reason ===
-            'io server disconnect'
-          ) {
-            void refreshSocketTicket();
-          }
-        },
-      );
+        setStatus('disconnected');
 
-      currentSocket.on(
-        'connect_error',
-        () => {
-          if (
-            cancelled ||
-            socket !==
-              currentSocket
-          ) {
-            return;
-          }
-
-          setStatus(
-            'connecting',
-          );
-
+        if (reason === 'io server disconnect') {
           void refreshSocketTicket();
-        },
-      );
+        }
+      });
+
+      currentSocket.on('connect_error', () => {
+        if (cancelled || socket !== currentSocket) {
+          return;
+        }
+
+        setStatus('connecting');
+
+        void refreshSocketTicket();
+      });
     }
 
-    async function start():
-      Promise<void> {
+    async function start(): Promise<void> {
       if (cancelled) {
         return;
       }
 
-      setStatus(
-        'connecting',
-      );
+      setStatus('connecting');
 
-      setOnlineUsers(
-        0,
-      );
+      setOnlineUsers(0);
 
       try {
-        const ticket =
-          await requestRealtimeTicket();
+        const ticket = await requestRealtimeTicket();
 
         if (cancelled) {
           return;
@@ -462,17 +275,11 @@ export function useTripRealtime({
 
         disposeSocket();
 
-        const nextSocket =
-          createRealtimeSocket(
-            ticket,
-          );
+        const nextSocket = createRealtimeSocket(ticket);
 
-        socket =
-          nextSocket;
+        socket = nextSocket;
 
-        registerSocketListeners(
-          nextSocket,
-        );
+        registerSocketListeners(nextSocket);
 
         nextSocket.connect();
       } catch {
@@ -485,16 +292,13 @@ export function useTripRealtime({
     void start();
 
     return () => {
-      cancelled =
-        true;
+      cancelled = true;
 
       clearRetry();
 
       disposeSocket();
     };
-  }, [
-    tripId,
-  ]);
+  }, [tripId]);
 
   return {
     status,
