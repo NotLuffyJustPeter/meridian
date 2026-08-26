@@ -1,0 +1,45 @@
+{
+  "benchmarkVersion": 1,
+  "trips": {
+    "query": "owner trip listing",
+    "plan": "Bitmap Heap Scan + Bitmap Index Scan",
+    "index": "trips_ownerId_startDate_idx",
+    "rows": 21,
+    "executionTimeMs": 0.224,
+    "optimizationJustified": false
+  },
+  "itinerary": {
+    "tripDays": 10,
+    "activities": 50,
+    "writeOnRead": true,
+    "writeOperation": "INSERT trip_days ... ON CONFLICT DO NOTHING",
+    "writeRowsAttemptedPerGet": 10,
+    "accessExecuteMs": 0.037,
+    "membershipExecuteMs": 0.004,
+    "insertExecuteMs": 0.28,
+    "tripDaysExecuteMs": 0.029,
+    "activitiesExecuteMs": 0.184,
+    "optimizationCandidate": "remove repeated write-on-read after itinerary materialization"
+  },
+  "expenses": {
+    "rows": 150,
+    "plan": "Seq Scan + quicksort",
+    "sortMemoryKb": 57,
+    "explainExecutionTimeMs": 0.2,
+    "prismaExecuteTimeMs": 0.57,
+    "optimizationJustified": false,
+    "note": "Seq Scan is appropriate at current dataset scale."
+  },
+  "budgetOverview": {
+    "logicalDatabaseOperations": 6,
+    "accessExecuteMs": 0.057,
+    "membershipExecuteMs": 0.004,
+    "aggregateExecuteMs": 0.111,
+    "groupByExecuteMs": 0.203,
+    "budgetExecuteMs": 0.889,
+    "categoryLimitsExecuteMs": 0.489,
+    "optimizationJustified": false,
+    "note": "Queries are parallelized where applicable; individual execute durations must not be treated as endpoint wall-clock latency."
+  },
+  "conclusion": "No new PostgreSQL index is justified by the V1 baseline at the current dataset scale. The clearest database-related optimization candidate is itinerary write-on-read behavior."
+}
