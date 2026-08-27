@@ -36,6 +36,17 @@ services:
       - "127.0.0.1:1025:1025"
       - "127.0.0.1:8025:8025"
 
+  jaeger:
+    image: cr.jaegertracing.io/jaegertracing/jaeger:2.20.0
+    container_name: meridian-jaeger
+
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:16686:16686"
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+
   api:
     container_name: meridian-api
 
@@ -59,10 +70,21 @@ services:
       SMTP_SECURE: "false"
       MAIL_FROM: "Meridian <no-reply@meridian.local>"
 
+      OTEL_ENABLED: "true"
+      OTEL_SERVICE_NAME: meridian-api
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://jaeger:4318/v1/traces
+      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: http/protobuf
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
+      OTEL_LOG_LEVEL: WARN
+      OTEL_RESOURCE_ATTRIBUTES: service.namespace=meridian,deployment.environment.name=local
+
     depends_on:
       db:
         condition: service_healthy
       mailpit:
+        condition: service_started
+      jaeger:
         condition: service_started
 
     ports:

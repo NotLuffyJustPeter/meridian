@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { LoggerModule } from 'nestjs-pino';
 
 import { AiModule } from './ai/ai.module';
 import { AuthModule } from './auth/auth.module';
@@ -9,12 +10,13 @@ import { ExpensesModule } from './expenses/expenses.module';
 import { GeocodingModule } from './geocoding/geocoding.module';
 import { HealthModule } from './health/health.module';
 import { ItineraryModule } from './itinerary/itinerary.module';
+import { createPinoHttpOptions } from './observability/http-logging.config';
 import { PlacesModule } from './places/places.module';
 import { RealtimeModule } from './realtime/realtime.module';
-import { TripsModule } from './trips/trips.module';
-import { UsersModule } from './users/users.module';
 import { SecurityModule } from './security/security.module';
 import { validateEnvironment } from './security/environment.validation';
+import { TripsModule } from './trips/trips.module';
+import { UsersModule } from './users/users.module';
 import { WeatherModule } from './weather/weather.module';
 
 @Module({
@@ -23,6 +25,10 @@ import { WeatherModule } from './weather/weather.module';
       isGlobal: true,
       cache: true,
       validate: validateEnvironment,
+    }),
+
+    LoggerModule.forRoot({
+      pinoHttp: createPinoHttpOptions(),
     }),
 
     SecurityModule,
