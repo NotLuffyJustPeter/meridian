@@ -1,0 +1,165 @@
+﻿{
+    "benchmarkVersion":  2,
+    "generatedAt":  "2026-08-28T05:28:28.6568831Z",
+    "gitCommit":  "545639c67629fe801aec36a477f3b944b9121bf6",
+    "datasetCommit":  "545639c67629fe801aec36a477f3b944b9121bf6",
+    "methodology":  "3 independent cache misses and 3 cache hits per provider-backed endpoint",
+    "baseline":  {
+                     "geocodingMedianMs":  16.747,
+                     "weatherMedianMs":  369.733
+                 },
+    "geocoding":  {
+                      "query":  "Duomo di Milano",
+                      "cold":  {
+                                   "medianMs":  14.935,
+                                   "runsMs":  [
+                                                  11.868,
+                                                  14.935,
+                                                  569.337
+                                              ],
+                                   "versusV1Pct":  10.82
+                               },
+                      "warm":  {
+                                   "medianMs":  13.726,
+                                   "runsMs":  [
+                                                  13.421,
+                                                  13.726,
+                                                  13.836
+                                              ],
+                                   "versusV1Pct":  18.04,
+                                   "versusColdPct":  8.1
+                               }
+                  },
+    "weather":  {
+                    "tripId":  "93d0cf5e-0ddf-4674-a199-d1e93edb787c",
+                    "cold":  {
+                                 "medianMs":  371.162,
+                                 "runsMs":  [
+                                                371.034,
+                                                371.162,
+                                                1467.643
+                                            ],
+                                 "versusV1Pct":  -0.39
+                             },
+                    "warm":  {
+                                 "medianMs":  15.437,
+                                 "runsMs":  [
+                                                15.413,
+                                                15.437,
+                                                15.997
+                                            ],
+                                 "versusV1Pct":  95.82,
+                                 "versusColdPct":  95.84
+                             }
+                },
+    "runs":  [
+                 {
+                     "providerTest":  "geocoding",
+                     "phase":  "cold",
+                     "run":  1,
+                     "status":  200,
+                     "elapsedMs":  569.337,
+                     "provider":  "nominatim",
+                     "detail":  "results=1"
+                 },
+                 {
+                     "providerTest":  "geocoding",
+                     "phase":  "cold",
+                     "run":  2,
+                     "status":  200,
+                     "elapsedMs":  11.868,
+                     "provider":  "nominatim",
+                     "detail":  "results=1"
+                 },
+                 {
+                     "providerTest":  "geocoding",
+                     "phase":  "cold",
+                     "run":  3,
+                     "status":  200,
+                     "elapsedMs":  14.935,
+                     "provider":  "nominatim",
+                     "detail":  "results=1"
+                 },
+                 {
+                     "providerTest":  "geocoding",
+                     "phase":  "warm",
+                     "run":  1,
+                     "status":  200,
+                     "elapsedMs":  13.836,
+                     "provider":  "nominatim",
+                     "detail":  "results=1"
+                 },
+                 {
+                     "providerTest":  "geocoding",
+                     "phase":  "warm",
+                     "run":  2,
+                     "status":  200,
+                     "elapsedMs":  13.726,
+                     "provider":  "nominatim",
+                     "detail":  "results=1"
+                 },
+                 {
+                     "providerTest":  "geocoding",
+                     "phase":  "warm",
+                     "run":  3,
+                     "status":  200,
+                     "elapsedMs":  13.421,
+                     "provider":  "nominatim",
+                     "detail":  "results=1"
+                 },
+                 {
+                     "providerTest":  "weather",
+                     "phase":  "cold",
+                     "run":  1,
+                     "status":  200,
+                     "elapsedMs":  1467.643,
+                     "provider":  "open-meteo",
+                     "detail":  "availability=OUT_OF_RANGE"
+                 },
+                 {
+                     "providerTest":  "weather",
+                     "phase":  "cold",
+                     "run":  2,
+                     "status":  200,
+                     "elapsedMs":  371.162,
+                     "provider":  "open-meteo",
+                     "detail":  "availability=OUT_OF_RANGE"
+                 },
+                 {
+                     "providerTest":  "weather",
+                     "phase":  "cold",
+                     "run":  3,
+                     "status":  200,
+                     "elapsedMs":  371.034,
+                     "provider":  "open-meteo",
+                     "detail":  "availability=OUT_OF_RANGE"
+                 },
+                 {
+                     "providerTest":  "weather",
+                     "phase":  "warm",
+                     "run":  1,
+                     "status":  200,
+                     "elapsedMs":  15.437,
+                     "provider":  "open-meteo",
+                     "detail":  "availability=OUT_OF_RANGE"
+                 },
+                 {
+                     "providerTest":  "weather",
+                     "phase":  "warm",
+                     "run":  2,
+                     "status":  200,
+                     "elapsedMs":  15.413,
+                     "provider":  "open-meteo",
+                     "detail":  "availability=OUT_OF_RANGE"
+                 },
+                 {
+                     "providerTest":  "weather",
+                     "phase":  "warm",
+                     "run":  3,
+                     "status":  200,
+                     "elapsedMs":  15.997,
+                     "provider":  "open-meteo",
+                     "detail":  "availability=OUT_OF_RANGE"
+                 }
+             ]
+}

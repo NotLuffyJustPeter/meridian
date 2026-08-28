@@ -1,0 +1,61 @@
+{
+  "datasetVersion": 1,
+  "profile": "meridian-v1-api-baseline",
+  "generatedAt": "2026-08-25T22:12:35.666Z",
+  "gitCommit": "6708d1d638dc6215118da974711c7f7d4289374b",
+  "apiBaseUrl": "http://localhost:3001/api/v1",
+  "owner": {
+    "id": "d712ebb5-c75a-4166-967a-831f4d229380",
+    "email": "benchmark-owner@meridian.local"
+  },
+  "primaryTrip": {
+    "id": "8523183f-3082-470a-8146-36aba86bfd31",
+    "name": "[BENCH] Primary Performance Journey",
+    "tripDays": 10,
+    "places": 30,
+    "activities": 50,
+    "expenses": 150,
+    "budgetCategoryLimits": 7
+  },
+  "secondaryTrips": {
+    "count": 20,
+    "ids": [
+      "c16ea63e-a378-45a5-a6ea-c5f27f2b9733",
+      "d97972e5-8654-43c6-b57e-9792479d4111",
+      "2b0a54b8-58fa-4533-b1a0-2f2dda182ae2",
+      "a73f06e3-8ffb-4137-ba21-1947249c7211",
+      "4fabb8fd-92fd-4fbc-a461-47dad4f489ff",
+      "efd569d7-5a62-46a1-9c54-7db4c22a40ed",
+      "67d87ced-03e9-4967-9763-38747f22edc4",
+      "fb1554c1-3c59-485a-9712-fe3c1de6df43",
+      "a1ff79a0-2917-4e5c-9e5d-8b82add405fe",
+      "728742ca-5eb9-44d2-8405-82e852c4b48c",
+      "65952f7f-3d34-4366-a4e9-ab0bd134c0b3",
+      "4be2131d-c974-4efe-a377-84bf74bd96d5",
+      "e8bd7abc-d5f5-4a8b-8d00-e28109de2906",
+      "0f4433cf-c041-4266-a72a-6d845b169897",
+      "ea5527a4-9224-458e-96cf-bd643fc6ceed",
+      "7e95004c-81c1-44b0-9cdb-81d740999683",
+      "4193d396-0ef9-4548-aada-cb7ea186b1a9",
+      "b631e14f-9040-406f-838f-8d6fdcffc87a",
+      "7251413a-bb10-47c7-bb36-b343b34ce73f",
+      "b03fc9bd-12af-42b1-842c-558d356862db"
+    ]
+  },
+  "totalTrips": 21,
+  "expectedCounts": {
+    "trips": 21,
+    "tripDays": 10,
+    "places": 30,
+    "activities": 50,
+    "budgets": 1,
+    "budgetCategoryLimits": 7,
+    "expenses": 150
+  },
+  "notes": [
+    "No access tokens are persisted.",
+    "No benchmark password is persisted.",
+    "The dataset is synthetic and intended only for local performance testing.",
+    "External-provider load testing is handled separately."
+  ]
+}
