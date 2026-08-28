@@ -1,0 +1,122 @@
+{
+  "benchmarkVersion": 1,
+  "profile": "meridian-v2-api-capacity",
+  "runId": "v2-capacity-232rps-high-throttle",
+  "dataset": {
+    "version": 1,
+    "gitCommit": "545639c67629fe801aec36a477f3b944b9121bf6",
+    "generatedAt": "2026-08-28T04:54:14.791Z",
+    "primaryTripId": "93d0cf5e-0ddf-4674-a199-d1e93edb787c",
+    "totalTrips": 21
+  },
+  "configuration": {
+    "baseUrl": "http://localhost:3001/api/v1",
+    "ratePerSecond": 232,
+    "duration": "60s",
+    "preAllocatedVUs": 464,
+    "maxVUs": 1856,
+    "endpointCount": 7
+  },
+  "aggregate": {
+    "totalRequests": 13920,
+    "throughputRps": 231.6512189751744,
+    "errorRate": 0,
+    "checkRate": 1,
+    "droppedIterations": 0,
+    "latency": {
+      "avgMs": 15.178991257183794,
+      "p50Ms": 5.6183,
+      "p90Ms": 14.909410000000001,
+      "p95Ms": 98.40371499999988,
+      "p99Ms": 176.0511799999998,
+      "minMs": 1.036,
+      "maxMs": 683.7708
+    }
+  },
+  "endpoints": {
+    "health": {
+      "label": "GET /health",
+      "latency": {
+        "avgMs": 9.956797536450457,
+        "p50Ms": 3.6847,
+        "p90Ms": 9.021400000000002,
+        "p95Ms": 57.83151999999992,
+        "p99Ms": 122.12623599999996,
+        "minMs": 1.036,
+        "maxMs": 450.6634
+      }
+    },
+    "trips_list": {
+      "label": "GET /trips",
+      "latency": {
+        "avgMs": 12.325861588738066,
+        "p50Ms": 4.1492,
+        "p90Ms": 11.655680000000004,
+        "p95Ms": 87.89155999999977,
+        "p99Ms": 135.75799599999996,
+        "minMs": 1.6664,
+        "maxMs": 524.9799
+      }
+    },
+    "trip_detail": {
+      "label": "GET /trips/:id",
+      "latency": {
+        "avgMs": 11.364224987430878,
+        "p50Ms": 3.6399,
+        "p90Ms": 9.872920000000004,
+        "p95Ms": 85.92285999999991,
+        "p99Ms": 134.73310799999982,
+        "minMs": 1.516,
+        "maxMs": 442.9953
+      }
+    },
+    "itinerary": {
+      "label": "GET itinerary",
+      "latency": {
+        "avgMs": 23.06754032176969,
+        "p50Ms": 9.0442,
+        "p90Ms": 21.343960000000003,
+        "p95Ms": 142.22774,
+        "p99Ms": 293.12467999999996,
+        "minMs": 5.6648,
+        "maxMs": 683.7708
+      }
+    },
+    "places": {
+      "label": "GET places",
+      "latency": {
+        "avgMs": 15.203163983903378,
+        "p50Ms": 5.6103000000000005,
+        "p90Ms": 13.417879999999998,
+        "p95Ms": 104.93081499999995,
+        "p99Ms": 166.44445499999964,
+        "minMs": 3.013,
+        "maxMs": 555.4051
+      }
+    },
+    "budget_overview": {
+      "label": "GET budget overview",
+      "latency": {
+        "avgMs": 17.873758702213266,
+        "p50Ms": 7.23745,
+        "p90Ms": 17.215739999999997,
+        "p95Ms": 119.03110499999997,
+        "p99Ms": 221.3107199999997,
+        "minMs": 2.5271,
+        "maxMs": 623.4969
+      }
+    },
+    "expenses": {
+      "label": "GET expenses",
+      "latency": {
+        "avgMs": 16.46360452716293,
+        "p50Ms": 6.62845,
+        "p90Ms": 15.073759999999998,
+        "p95Ms": 108.55047999999991,
+        "p99Ms": 174.99168899999984,
+        "minMs": 3.6289,
+        "maxMs": 576.8149
+      }
+    }
+  }
+}
