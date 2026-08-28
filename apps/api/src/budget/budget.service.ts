@@ -212,24 +212,13 @@ export class BudgetService {
   async getOverview(ownerId: string, tripId: string) {
     const trip = await this.tripsService.findAccessibleTripOrThrow(ownerId, tripId);
 
-    const [budget, expenseAggregate, groupedExpenses] = await Promise.all([
+    const [budget, groupedExpenses] = await Promise.all([
       this.prisma.budget.findUnique({
         where: {
           tripId,
         },
         include: {
           categoryLimits: true,
-        },
-      }),
-      this.prisma.expense.aggregate({
-        where: {
-          tripId,
-        },
-        _sum: {
-          amount: true,
-        },
-        _count: {
-          _all: true,
         },
       }),
       this.prisma.expense.groupBy({
@@ -246,8 +235,31 @@ export class BudgetService {
       }),
     ]);
 
-    const spentAmount = expenseAggregate._sum.amount?.toFixed(2) ?? '0.00';
-    const spentCents = this.moneyToCents(spentAmount);
+    const groupedByCategory = new Map<
+      ExpenseCategoryValue,
+      {
+        spentAmount: string;
+        expensesCount: number;
+      }
+    >();
+
+    let spentCents = 0n;
+    let expensesCount = 0;
+
+    for (const group of groupedExpenses) {
+      const categorySpentAmount = group._sum.amount?.toFixed(2) ?? '0.00';
+      const categorySpentCents = this.moneyToCents(categorySpentAmount);
+
+      spentCents += categorySpentCents;
+      expensesCount += group._count._all;
+
+      groupedByCategory.set(group.category, {
+        spentAmount: categorySpentAmount,
+        expensesCount: group._count._all,
+      });
+    }
+
+    const spentAmount = this.centsToMoney(spentCents);
 
     const budgetAmount = budget?.totalAmount.toFixed(2) ?? null;
     const budgetCents = budgetAmount !== null ? this.moneyToCents(budgetAmount) : null;
@@ -257,21 +269,6 @@ export class BudgetService {
 
     const usagePercentage =
       budgetCents !== null ? this.percentageFromCents(spentCents, budgetCents) : null;
-
-    const groupedByCategory = new Map<
-      ExpenseCategoryValue,
-      {
-        spentAmount: string;
-        expensesCount: number;
-      }
-    >();
-
-    for (const group of groupedExpenses) {
-      groupedByCategory.set(group.category, {
-        spentAmount: group._sum.amount?.toFixed(2) ?? '0.00',
-        expensesCount: group._count._all,
-      });
-    }
 
     const limitsByCategory = new Map<
       ExpenseCategoryValue,
@@ -312,7 +309,7 @@ export class BudgetService {
         spentAmount,
         remainingAmount,
         usagePercentage,
-        expensesCount: expenseAggregate._count._all,
+        expensesCount,
       },
       categories,
     };

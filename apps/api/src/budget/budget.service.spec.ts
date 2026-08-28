@@ -130,7 +130,9 @@ describe('BudgetService', () => {
     categoryFindMany = jest.fn<CategoryFindManyMock>();
     categoryUpsert = jest.fn<CategoryUpsertMock>();
     categoryDeleteMany = jest.fn<CategoryDeleteManyMock>();
-    expenseAggregate = jest.fn<ExpenseAggregateMock>();
+    expenseAggregate = jest.fn<ExpenseAggregateMock>(() =>
+      Promise.reject(new Error('expense.aggregate must not be called by getOverview')),
+    );
     expenseGroupBy = jest.fn<ExpenseGroupByMock>();
     findAccessibleTripOrThrow = jest.fn<FindTripAccessMock>();
     findEditableTripOrThrow = jest.fn<FindTripAccessMock>();
@@ -166,15 +168,6 @@ describe('BudgetService', () => {
     findEditableTripOrThrow.mockResolvedValue({
       id: TRIP_ID,
       currency: 'EUR',
-    });
-
-    expenseAggregate.mockResolvedValue({
-      _sum: {
-        amount: null,
-      },
-      _count: {
-        _all: 0,
-      },
     });
 
     expenseGroupBy.mockResolvedValue([]);
@@ -377,15 +370,6 @@ describe('BudgetService', () => {
       budgetRecord('1000.00', [limitRecord('FOOD', '400.00'), limitRecord('TRANSPORT', '250.00')]),
     );
 
-    expenseAggregate.mockResolvedValue({
-      _sum: {
-        amount: decimal('300.00'),
-      },
-      _count: {
-        _all: 3,
-      },
-    });
-
     expenseGroupBy.mockResolvedValue([
       {
         category: 'FOOD',
@@ -431,15 +415,6 @@ describe('BudgetService', () => {
 
   it('still reports spending without a configured total budget', async () => {
     budgetFindUnique.mockResolvedValue(null);
-
-    expenseAggregate.mockResolvedValue({
-      _sum: {
-        amount: decimal('50.00'),
-      },
-      _count: {
-        _all: 1,
-      },
-    });
 
     expenseGroupBy.mockResolvedValue([
       {
