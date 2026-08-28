@@ -1,0 +1,213 @@
+{
+    "reportVersion":  1,
+    "generatedAt":  "2026-08-28T06:32:14.0132891Z",
+    "branch":  "perf/v2-targeted-optimization",
+    "optimizationCommit":  "3c176892b9a1efc5e4142e2003c3f19f2652eeed",
+    "benchmark":  {
+                      "ratePerSecond":  4,
+                      "duration":  "5m",
+                      "runs":  3,
+                      "smokeRun":  "v2-targeted-smoke",
+                      "targetedRuns":  [
+                                           "v2-targeted-run-1",
+                                           "v2-targeted-run-2",
+                                           "v2-targeted-run-3"
+                                       ]
+                  },
+    "reliability":  {
+                        "totalRequests":  3601,
+                        "errorRate":  0,
+                        "checkRate":  1,
+                        "droppedIterations":  0
+                    },
+    "structuralEvidence":  {
+                               "endpoint":  "GET /api/v1/trips/:tripId/budget/overview",
+                               "before":  {
+                                              "pgSelects":  6,
+                                              "prismaDbQueries":  6,
+                                              "typicalTraceSpans":  31
+                                          },
+                               "after":  {
+                                             "pgSelects":  5,
+                                             "prismaDbQueries":  5,
+                                             "typicalTraceSpans":  27
+                                         },
+                               "selectReductionPct":  16.67
+                           },
+    "aggregateMedian":  {
+                            "before":  {
+                                           "p50Ms":  5.154,
+                                           "p95Ms":  9.183,
+                                           "p99Ms":  11.267
+                                       },
+                            "after":  {
+                                          "p50Ms":  5.204,
+                                          "p95Ms":  9.248,
+                                          "p99Ms":  11.524
+                                      },
+                            "changePct":  {
+                                              "p50":  -0.97,
+                                              "p95":  -0.71,
+                                              "p99":  -2.28
+                                          }
+                        },
+    "budgetOverviewMedian":  {
+                                 "key":  "budget_overview",
+                                 "label":  "GET budget overview",
+                                 "before":  {
+                                                "p50Ms":  5.6,
+                                                "p95Ms":  7.966,
+                                                "p99Ms":  10.135
+                                            },
+                                 "after":  {
+                                               "p50Ms":  5.635,
+                                               "p95Ms":  8.229,
+                                               "p99Ms":  9.782
+                                           },
+                                 "changePct":  {
+                                                   "p50":  -0.62,
+                                                   "p95":  -3.3,
+                                                   "p99":  3.48
+                                               }
+                             },
+    "endpoints":  [
+                      {
+                          "key":  "health",
+                          "label":  "GET /health",
+                          "before":  {
+                                         "p50Ms":  2.721,
+                                         "p95Ms":  3.673,
+                                         "p99Ms":  5.783
+                                     },
+                          "after":  {
+                                        "p50Ms":  2.733,
+                                        "p95Ms":  4.379,
+                                        "p99Ms":  5.379
+                                    },
+                          "changePct":  {
+                                            "p50":  -0.46,
+                                            "p95":  -19.21,
+                                            "p99":  6.99
+                                        }
+                      },
+                      {
+                          "key":  "trips_list",
+                          "label":  "GET /trips",
+                          "before":  {
+                                         "p50Ms":  4.313,
+                                         "p95Ms":  5.97,
+                                         "p99Ms":  7.575
+                                     },
+                          "after":  {
+                                        "p50Ms":  4.517,
+                                        "p95Ms":  6.446,
+                                        "p99Ms":  8.062
+                                    },
+                          "changePct":  {
+                                            "p50":  -4.74,
+                                            "p95":  -7.97,
+                                            "p99":  -6.43
+                                        }
+                      },
+                      {
+                          "key":  "trip_detail",
+                          "label":  "GET /trips/:id",
+                          "before":  {
+                                         "p50Ms":  4.117,
+                                         "p95Ms":  5.486,
+                                         "p99Ms":  6.23
+                                     },
+                          "after":  {
+                                        "p50Ms":  4.239,
+                                        "p95Ms":  5.895,
+                                        "p99Ms":  7.047
+                                    },
+                          "changePct":  {
+                                            "p50":  -2.97,
+                                            "p95":  -7.45,
+                                            "p99":  -13.11
+                                        }
+                      },
+                      {
+                          "key":  "itinerary",
+                          "label":  "GET itinerary",
+                          "before":  {
+                                         "p50Ms":  8.244,
+                                         "p95Ms":  11.234,
+                                         "p99Ms":  14.324
+                                     },
+                          "after":  {
+                                        "p50Ms":  8.49,
+                                        "p95Ms":  11.673,
+                                        "p99Ms":  13.305
+                                    },
+                          "changePct":  {
+                                            "p50":  -2.98,
+                                            "p95":  -3.9,
+                                            "p99":  7.12
+                                        }
+                      },
+                      {
+                          "key":  "places",
+                          "label":  "GET places",
+                          "before":  {
+                                         "p50Ms":  5.014,
+                                         "p95Ms":  7.172,
+                                         "p99Ms":  8.198
+                                     },
+                          "after":  {
+                                        "p50Ms":  5.144,
+                                        "p95Ms":  6.853,
+                                        "p99Ms":  9.511
+                                    },
+                          "changePct":  {
+                                            "p50":  -2.58,
+                                            "p95":  4.46,
+                                            "p99":  -16.02
+                                        }
+                      },
+                      {
+                          "key":  "budget_overview",
+                          "label":  "GET budget overview",
+                          "before":  {
+                                         "p50Ms":  5.6,
+                                         "p95Ms":  7.966,
+                                         "p99Ms":  10.135
+                                     },
+                          "after":  {
+                                        "p50Ms":  5.635,
+                                        "p95Ms":  8.229,
+                                        "p99Ms":  9.782
+                                    },
+                          "changePct":  {
+                                            "p50":  -0.62,
+                                            "p95":  -3.3,
+                                            "p99":  3.48
+                                        }
+                      },
+                      {
+                          "key":  "expenses",
+                          "label":  "GET expenses",
+                          "before":  {
+                                         "p50Ms":  6.511,
+                                         "p95Ms":  8.45,
+                                         "p99Ms":  10.389
+                                     },
+                          "after":  {
+                                        "p50Ms":  6.742,
+                                        "p95Ms":  8.459,
+                                        "p99Ms":  10.464
+                                    },
+                          "changePct":  {
+                                            "p50":  -3.54,
+                                            "p95":  -0.1,
+                                            "p99":  -0.73
+                                        }
+                      }
+                  ],
+    "conclusion":  {
+                       "decision":  "keep",
+                       "latencyResult":  "neutral-within-observed-variability",
+                       "rationale":  "The optimization removes one redundant expense aggregation query per budget overview request. Query count decreased from 6 to 5 while reliability remained unchanged. Observed latency differences were small and comparable to variation seen in untouched endpoints."
+                   }
+}
