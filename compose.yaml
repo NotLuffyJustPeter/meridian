@@ -47,6 +47,39 @@ services:
       - "127.0.0.1:4317:4317"
       - "127.0.0.1:4318:4318"
 
+  redis:
+    image: redis:7.4-alpine
+    container_name: meridian-redis
+
+    restart: unless-stopped
+
+    command:
+      [
+        "redis-server",
+        "--save",
+        "",
+        "--appendonly",
+        "no",
+        "--maxmemory",
+        "128mb",
+        "--maxmemory-policy",
+        "allkeys-lru"
+      ]
+
+    ports:
+      - "127.0.0.1:6379:6379"
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "redis-cli",
+          "ping"
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   api:
     container_name: meridian-api
 
@@ -70,6 +103,11 @@ services:
       SMTP_SECURE: "false"
       MAIL_FROM: "Meridian <no-reply@meridian.local>"
 
+      REDIS_URL: redis://redis:6379
+      CACHE_GEOCODING_TTL_SECONDS: "86400"
+      CACHE_WEATHER_LOCATION_TTL_SECONDS: "604800"
+      CACHE_WEATHER_FORECAST_TTL_SECONDS: "900"
+
       OTEL_ENABLED: "true"
       OTEL_SERVICE_NAME: meridian-api
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://jaeger:4318/v1/traces
@@ -82,10 +120,15 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
       mailpit:
         condition: service_started
+
       jaeger:
         condition: service_started
+
+      redis:
+        condition: service_healthy
 
     ports:
       - "3001:3001"

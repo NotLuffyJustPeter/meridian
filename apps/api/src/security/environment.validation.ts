@@ -151,11 +151,22 @@ export function validateEnvironment(env: Env): Env {
 
   result.TRUST_PROXY = trustProxy;
 
+  const redisUrl = stringValue(env, 'REDIS_URL');
+
+  if (redisUrl) {
+    validUrl(redisUrl, 'REDIS_URL', ['redis:', 'rediss:']);
+  }
   integerRange(env, 'PORT', 1, 65535);
   integerRange(env, 'JWT_ACCESS_TTL_SECONDS', 60, 3600);
   integerRange(env, 'JWT_REFRESH_TTL_SECONDS', 3600, 2_592_000);
   integerRange(env, 'PASSWORD_RESET_TTL_MINUTES', 5, 120);
   integerRange(env, 'SMTP_PORT', 1, 65535);
+
+  integerRange(env, 'CACHE_GEOCODING_TTL_SECONDS', 60, 2_592_000);
+
+  integerRange(env, 'CACHE_WEATHER_LOCATION_TTL_SECONDS', 60, 2_592_000);
+
+  integerRange(env, 'CACHE_WEATHER_FORECAST_TTL_SECONDS', 30, 86_400);
 
   booleanValue(env, 'SMTP_SECURE');
 
