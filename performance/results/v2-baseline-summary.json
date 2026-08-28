@@ -1,0 +1,503 @@
+{
+  "benchmarkVersion": 2,
+  "workloadVersion": 1,
+  "workloadProfile": "meridian-v1-api-baseline",
+  "methodology": "median-of-three-runs",
+  "k6Version": "2.2.0",
+  "v1DatasetCommit": "6708d1d638dc6215118da974711c7f7d4289374b",
+  "v2DatasetCommit": "545639c67629fe801aec36a477f3b944b9121bf6",
+  "datasetVersion": 1,
+  "runCount": 3,
+  "totalRequests": 3602,
+  "configuration": {
+    "ratePerSecond": 4,
+    "durationPerRun": "5m",
+    "endpointCount": 7
+  },
+  "aggregate": {
+    "throughputRps": {
+      "median": 4.002,
+      "min": 3.999,
+      "max": 4.002,
+      "runs": [
+        4.002,
+        3.999,
+        4.002
+      ]
+    },
+    "avgMs": {
+      "median": 5.5,
+      "min": 5.282,
+      "max": 5.614,
+      "runs": [
+        5.614,
+        5.5,
+        5.282
+      ]
+    },
+    "p50Ms": {
+      "median": 5.154,
+      "min": 4.968,
+      "max": 5.345,
+      "runs": [
+        5.345,
+        5.154,
+        4.968
+      ]
+    },
+    "p90Ms": {
+      "median": 8.205,
+      "min": 7.886,
+      "max": 8.266,
+      "runs": [
+        8.266,
+        8.205,
+        7.886
+      ]
+    },
+    "p95Ms": {
+      "median": 9.183,
+      "min": 8.692,
+      "max": 9.377,
+      "runs": [
+        9.183,
+        9.377,
+        8.692
+      ]
+    },
+    "p99Ms": {
+      "median": 11.267,
+      "min": 10.948,
+      "max": 11.706,
+      "runs": [
+        11.706,
+        11.267,
+        10.948
+      ]
+    },
+    "errorRate": 0,
+    "checkRate": 1,
+    "droppedIterations": 0
+  },
+  "endpoints": {
+    "health": {
+      "label": "GET /health",
+      "p50": {
+        "median": 2.721,
+        "min": 2.595,
+        "max": 2.762,
+        "runs": [
+          2.762,
+          2.721,
+          2.595
+        ]
+      },
+      "p95": {
+        "median": 3.673,
+        "min": 3.514,
+        "max": 3.874,
+        "runs": [
+          3.673,
+          3.874,
+          3.514
+        ]
+      },
+      "p99": {
+        "median": 5.783,
+        "min": 5.708,
+        "max": 6.01,
+        "runs": [
+          5.708,
+          5.783,
+          6.01
+        ]
+      }
+    },
+    "trips_list": {
+      "label": "GET /trips",
+      "p50": {
+        "median": 4.313,
+        "min": 4.242,
+        "max": 4.508,
+        "runs": [
+          4.508,
+          4.313,
+          4.242
+        ]
+      },
+      "p95": {
+        "median": 5.97,
+        "min": 5.466,
+        "max": 6.292,
+        "runs": [
+          5.97,
+          6.292,
+          5.466
+        ]
+      },
+      "p99": {
+        "median": 7.575,
+        "min": 6.835,
+        "max": 8.056,
+        "runs": [
+          7.575,
+          8.056,
+          6.835
+        ]
+      }
+    },
+    "trip_detail": {
+      "label": "GET /trips/:id",
+      "p50": {
+        "median": 4.117,
+        "min": 3.934,
+        "max": 4.182,
+        "runs": [
+          4.182,
+          4.117,
+          3.934
+        ]
+      },
+      "p95": {
+        "median": 5.486,
+        "min": 5.486,
+        "max": 5.647,
+        "runs": [
+          5.486,
+          5.647,
+          5.486
+        ]
+      },
+      "p99": {
+        "median": 6.23,
+        "min": 6.094,
+        "max": 7.049,
+        "runs": [
+          6.23,
+          7.049,
+          6.094
+        ]
+      }
+    },
+    "itinerary": {
+      "label": "GET itinerary",
+      "p50": {
+        "median": 8.244,
+        "min": 8.036,
+        "max": 8.557,
+        "runs": [
+          8.557,
+          8.244,
+          8.036
+        ]
+      },
+      "p95": {
+        "median": 11.235,
+        "min": 11.042,
+        "max": 11.73,
+        "runs": [
+          11.73,
+          11.235,
+          11.042
+        ]
+      },
+      "p99": {
+        "median": 14.324,
+        "min": 13.084,
+        "max": 17.642,
+        "runs": [
+          17.642,
+          14.324,
+          13.084
+        ]
+      }
+    },
+    "places": {
+      "label": "GET places",
+      "p50": {
+        "median": 5.014,
+        "min": 4.785,
+        "max": 5.203,
+        "runs": [
+          5.203,
+          5.014,
+          4.785
+        ]
+      },
+      "p95": {
+        "median": 7.173,
+        "min": 6.621,
+        "max": 7.302,
+        "runs": [
+          7.173,
+          7.302,
+          6.621
+        ]
+      },
+      "p99": {
+        "median": 8.198,
+        "min": 7.963,
+        "max": 8.74,
+        "runs": [
+          8.198,
+          8.74,
+          7.963
+        ]
+      }
+    },
+    "budget_overview": {
+      "label": "GET budget overview",
+      "p50": {
+        "median": 5.6,
+        "min": 5.587,
+        "max": 5.768,
+        "runs": [
+          5.768,
+          5.6,
+          5.587
+        ]
+      },
+      "p95": {
+        "median": 7.966,
+        "min": 7.58,
+        "max": 8.026,
+        "runs": [
+          8.026,
+          7.966,
+          7.58
+        ]
+      },
+      "p99": {
+        "median": 10.135,
+        "min": 8.866,
+        "max": 10.646,
+        "runs": [
+          10.646,
+          8.866,
+          10.135
+        ]
+      }
+    },
+    "expenses": {
+      "label": "GET expenses",
+      "p50": {
+        "median": 6.511,
+        "min": 6.239,
+        "max": 6.578,
+        "runs": [
+          6.578,
+          6.511,
+          6.239
+        ]
+      },
+      "p95": {
+        "median": 8.45,
+        "min": 8.371,
+        "max": 9.156,
+        "runs": [
+          8.45,
+          9.156,
+          8.371
+        ]
+      },
+      "p99": {
+        "median": 10.389,
+        "min": 10.065,
+        "max": 11.423,
+        "runs": [
+          10.389,
+          11.423,
+          10.065
+        ]
+      }
+    }
+  },
+  "comparison": {
+    "aggregate": {
+      "throughput": {
+        "v1Rps": 4.002,
+        "v2Rps": 4.002,
+        "changePct": 0
+      },
+      "avg": {
+        "v1Ms": 5.965,
+        "v2Ms": 5.5,
+        "improvementPct": 7.8,
+        "status": "improved"
+      },
+      "p50": {
+        "v1Ms": 5.356,
+        "v2Ms": 5.154,
+        "improvementPct": 3.77,
+        "status": "improved"
+      },
+      "p90": {
+        "v1Ms": 9.319,
+        "v2Ms": 8.205,
+        "improvementPct": 11.95,
+        "status": "improved"
+      },
+      "p95": {
+        "v1Ms": 10.183,
+        "v2Ms": 9.183,
+        "improvementPct": 9.82,
+        "status": "improved"
+      },
+      "p99": {
+        "v1Ms": 12.464,
+        "v2Ms": 11.267,
+        "improvementPct": 9.6,
+        "status": "improved"
+      }
+    },
+    "endpoints": {
+      "health": {
+        "label": "GET /health",
+        "p50": {
+          "v1Ms": 2.701,
+          "v2Ms": 2.721,
+          "improvementPct": -0.74,
+          "status": "stable"
+        },
+        "p95": {
+          "v1Ms": 3.682,
+          "v2Ms": 3.673,
+          "improvementPct": 0.24,
+          "status": "stable"
+        },
+        "p99": {
+          "v1Ms": 4.831,
+          "v2Ms": 5.783,
+          "improvementPct": -19.71,
+          "status": "regressed"
+        }
+      },
+      "trips_list": {
+        "label": "GET /trips",
+        "p50": {
+          "v1Ms": 4.601,
+          "v2Ms": 4.313,
+          "improvementPct": 6.26,
+          "status": "improved"
+        },
+        "p95": {
+          "v1Ms": 6.462,
+          "v2Ms": 5.97,
+          "improvementPct": 7.61,
+          "status": "improved"
+        },
+        "p99": {
+          "v1Ms": 8.042,
+          "v2Ms": 7.575,
+          "improvementPct": 5.81,
+          "status": "improved"
+        }
+      },
+      "trip_detail": {
+        "label": "GET /trips/:id",
+        "p50": {
+          "v1Ms": 4.054,
+          "v2Ms": 4.117,
+          "improvementPct": -1.55,
+          "status": "stable"
+        },
+        "p95": {
+          "v1Ms": 5.241,
+          "v2Ms": 5.486,
+          "improvementPct": -4.67,
+          "status": "regressed"
+        },
+        "p99": {
+          "v1Ms": 6.112,
+          "v2Ms": 6.23,
+          "improvementPct": -1.93,
+          "status": "stable"
+        }
+      },
+      "itinerary": {
+        "label": "GET itinerary",
+        "p50": {
+          "v1Ms": 9.15,
+          "v2Ms": 8.244,
+          "improvementPct": 9.9,
+          "status": "improved"
+        },
+        "p95": {
+          "v1Ms": 12.669,
+          "v2Ms": 11.235,
+          "improvementPct": 11.32,
+          "status": "improved"
+        },
+        "p99": {
+          "v1Ms": 14.784,
+          "v2Ms": 14.324,
+          "improvementPct": 3.11,
+          "status": "improved"
+        }
+      },
+      "places": {
+        "label": "GET places",
+        "p50": {
+          "v1Ms": 5.554,
+          "v2Ms": 5.014,
+          "improvementPct": 9.72,
+          "status": "improved"
+        },
+        "p95": {
+          "v1Ms": 7.203,
+          "v2Ms": 7.173,
+          "improvementPct": 0.42,
+          "status": "stable"
+        },
+        "p99": {
+          "v1Ms": 8.393,
+          "v2Ms": 8.198,
+          "improvementPct": 2.32,
+          "status": "improved"
+        }
+      },
+      "budget_overview": {
+        "label": "GET budget overview",
+        "p50": {
+          "v1Ms": 5.443,
+          "v2Ms": 5.6,
+          "improvementPct": -2.88,
+          "status": "regressed"
+        },
+        "p95": {
+          "v1Ms": 7.411,
+          "v2Ms": 7.966,
+          "improvementPct": -7.49,
+          "status": "regressed"
+        },
+        "p99": {
+          "v1Ms": 11.079,
+          "v2Ms": 10.135,
+          "improvementPct": 8.52,
+          "status": "improved"
+        }
+      },
+      "expenses": {
+        "label": "GET expenses",
+        "p50": {
+          "v1Ms": 8.534,
+          "v2Ms": 6.511,
+          "improvementPct": 23.71,
+          "status": "improved"
+        },
+        "p95": {
+          "v1Ms": 10.845,
+          "v2Ms": 8.45,
+          "improvementPct": 22.08,
+          "status": "improved"
+        },
+        "p99": {
+          "v1Ms": 12.377,
+          "v2Ms": 10.389,
+          "improvementPct": 16.06,
+          "status": "improved"
+        }
+      }
+    }
+  }
+}
