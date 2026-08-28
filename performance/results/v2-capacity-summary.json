@@ -1,0 +1,322 @@
+﻿{
+    "reportVersion":  1,
+    "generatedAt":  "2026-08-28T07:21:26.9343365Z",
+    "branch":  "perf/v2-capacity-testing",
+    "applicationCommit":  "2c7550b08815a78b0c47b6c1aafcf8a4c180967e",
+    "dataset":  {
+                    "version":  1,
+                    "gitCommit":  "545639c67629fe801aec36a477f3b944b9121bf6"
+                },
+    "environment":  {
+                        "dockerCpus":  12,
+                        "dockerMemoryBytes":  8215216128,
+                        "apiContainerResourceLimit":  "none",
+                        "postgresContainerResourceLimit":  "none",
+                        "redisContainerResourceLimit":  "none"
+                    },
+    "productionThrottle":  {
+                               "requestsPerWindow":  300,
+                               "windowSeconds":  60,
+                               "blockDurationSeconds":  15,
+                               "healthEndpointExcluded":  true,
+                               "firstTestedPolicyLimitedPointRps":  64,
+                               "observedAt64Rps":  {
+                                                       "throughputRps":  63.914,
+                                                       "errorRate":  0.215569,
+                                                       "checkRate":  0.784431,
+                                                       "droppedIterations":  0
+                                                   },
+                               "highThrottleControlAt64Rps":  {
+                                                                  "throughputRps":  63.864,
+                                                                  "errorRate":  0,
+                                                                  "checkRate":  1,
+                                                                  "droppedIterations":  0,
+                                                                  "p95Ms":  9.523,
+                                                                  "p99Ms":  12.604
+                                                              },
+                               "conclusion":  "The non-2xx responses observed at 64 RPS under normal configuration were caused by the application throttling policy, not backend saturation."
+                           },
+    "technicalCapacity":  {
+                              "clearlySustainableRps":  192,
+                              "upperOperatingEdgeRps":  224,
+                              "latencyKneeRangeRps":  [
+                                                          224,
+                                                          240
+                                                      ],
+                              "degradedFromTestedRps":  232,
+                              "severeDegradationAtRps":  256,
+                              "hardThroughputCeilingReached":  false,
+                              "primaryPressureLayer":  "api",
+                              "conclusion":  "Meridian preserved requested throughput through 256 RPS, but tail latency became unstable above the 224 RPS operating edge. Runs between 232 and 240 RPS showed significant tail-latency pressure, while 256 RPS demonstrated severe degradation. The experiment therefore identified a latency knee region rather than a hard throughput ceiling."
+                          },
+    "runs":  [
+                 {
+                     "name":  "smoke-4",
+                     "mode":  "normal-throttle",
+                     "classification":  "smoke",
+                     "configuredRps":  4,
+                     "duration":  "30s",
+                     "requests":  120,
+                     "throughputRps":  3.99,
+                     "errorRate":  0,
+                     "checkRate":  1,
+                     "droppedIterations":  0,
+                     "latency":  {
+                                     "p50Ms":  5.76,
+                                     "p95Ms":  11.143,
+                                     "p99Ms":  13.069,
+                                     "maxMs":  13.471
+                                 },
+                     "resourcePeaks":  null
+                 },
+                 {
+                     "name":  "8",
+                     "mode":  "normal-throttle",
+                     "classification":  "healthy",
+                     "configuredRps":  8,
+                     "duration":  "60s",
+                     "requests":  480,
+                     "throughputRps":  7.989,
+                     "errorRate":  0,
+                     "checkRate":  1,
+                     "droppedIterations":  0,
+                     "latency":  {
+                                     "p50Ms":  5.225,
+                                     "p95Ms":  9.432,
+                                     "p99Ms":  11.592,
+                                     "maxMs":  17.958
+                                 },
+                     "resourcePeaks":  null
+                 },
+                 {
+                     "name":  "16",
+                     "mode":  "normal-throttle",
+                     "classification":  "healthy",
+                     "configuredRps":  16,
+                     "duration":  "60s",
+                     "requests":  960,
+                     "throughputRps":  15.977,
+                     "errorRate":  0,
+                     "checkRate":  1,
+                     "droppedIterations":  0,
+                     "latency":  {
+                                     "p50Ms":  5.111,
+                                     "p95Ms":  9.159,
+                                     "p99Ms":  11,
+                                     "maxMs":  13.144
+                                 },
+                     "resourcePeaks":  {
+                                           "apiCpuPct":  31.58,
+                                           "postgresCpuPct":  6.3,
+                                           "redisCpuPct":  3.25
+                                       }
+                 },
+                 {
+                     "name":  "32",
+                     "mode":  "normal-throttle",
+                     "classification":  "healthy",
+                     "configuredRps":  32,
+                     "duration":  "60s",
+                     "requests":  1921,
+                     "throughputRps":  31.971,
+                     "errorRate":  0,
+                     "checkRate":  1,
+                     "droppedIterations":  0,
+                     "latency":  {
+                                     "p50Ms":  5.05,
+                                     "p95Ms":  9.033,
+                                     "p99Ms":  11.56,
+                                     "maxMs":  34.912
+                                 },
+                     "resourcePeaks":  {
+                                           "apiCpuPct":  39.02,
+                                           "postgresCpuPct":  3.02,
+                                           "redisCpuPct":  0.35
+                                       }
+                 },
+                 {
+                     "name":  "64-policy",
+                     "mode":  "normal-throttle",
+                     "classification":  "policy-limited",
+                     "configuredRps":  64,
+                     "duration":  "60s",
+                     "requests":  3841,
+                     "throughputRps":  63.914,
+                     "errorRate":  0.215569,
+                     "checkRate":  0.784431,
+                     "droppedIterations":  0,
+                     "latency":  {
+                                     "p50Ms":  4.235,
+                                     "p95Ms":  8.586,
+                                     "p99Ms":  10.965,
+                                     "maxMs":  22.114
+                                 },
+                     "resourcePeaks":  {
+                                           "apiCpuPct":  45.62,
+                                           "postgresCpuPct":  5.95,
+                                           "redisCpuPct":  3.05
+                                       }
+                 },
+                 {
+                     "name":  "64-control",
+                     "mode":  "high-throttle-control",
+                     "classification":  "healthy",
+                     "configuredRps":  64,
+                     "duration":  "60s",
+                     "requests":  3841,
+                     "throughputRps":  63.864,
+                     "errorRate":  0,
+                     "checkRate":  1,
+                     "droppedIterations":  0,
+                     "latency":  {
+                                     "p50Ms":  5.159,
+                                     "p95Ms":  9.523,
+                                     "p99Ms":  12.604,
+                                     "maxMs":  39.945
+                                 },
+                     "resourcePeaks":  null
+                 },
+                 {
+                     "name":  "128",
+                     "mode":  "high-throttle",
+                     "classification":  "healthy",
+                     "configuredRps":  128,
+                     "duration":  "60s",
+                     "requests":  7681,
+                     "throughputRps":  127.824,
+                     "errorRate":  0,
+                     "checkRate":  1,
+                     "droppedIterations":  0,
+                     "latency":  {
+                                     "p50Ms":  4.723,
+                                     "p95Ms":  8.914,
+                                     "p99Ms":  14.715,
+                                     "maxMs":  142.503
+                                 },
+                     "resourcePeaks":  {
+                                           "apiCpuPct":  65.36,
+                                           "postgresCpuPct":  17.76,
+                                           "redisCpuPct":  0.35
+                                       }
+                 },
+                 {
+                     "name":  "192",
+                     "mode":  "high-throttle",
+                     "classification":  "sustainable",
+                     "configuredRps":  192,
+                     "duration":  "60s",
+                     "requests":  11520,
+                     "throughputRps":  191.677,
+                     "errorRate":  0,
+                     "checkRate":  1,
+                     "droppedIterations":  0,
+                     "latency":  {
+                                     "p50Ms":  4.755,
+                                     "p95Ms":  10.639,
+                                     "p99Ms":  18.441,
+                                     "maxMs":  133.978
+                                 },
+                     "resourcePeaks":  {
+                                           "apiCpuPct":  95,
+                                           "postgresCpuPct":  24.96,
+                                           "redisCpuPct":  0.34
+                                       }
+                 },
+                 {
+                     "name":  "224",
+                     "mode":  "high-throttle",
+                     "classification":  "upper-edge",
+                     "configuredRps":  224,
+                     "duration":  "60s",
+                     "requests":  13440,
+                     "throughputRps":  223.655,
+                     "errorRate":  0,
+                     "checkRate":  1,
+                     "droppedIterations":  0,
+                     "latency":  {
+                                     "p50Ms":  5.204,
+                                     "p95Ms":  14.552,
+                                     "p99Ms":  41.592,
+                                     "maxMs":  252.999
+                                 },
+                     "resourcePeaks":  {
+                                           "apiCpuPct":  98.59,
+                                           "postgresCpuPct":  20.61,
+                                           "redisCpuPct":  3
+                                       }
+                 },
+                 {
+                     "name":  "232",
+                     "mode":  "high-throttle",
+                     "classification":  "knee",
+                     "configuredRps":  232,
+                     "duration":  "60s",
+                     "requests":  13920,
+                     "throughputRps":  231.651,
+                     "errorRate":  0,
+                     "checkRate":  1,
+                     "droppedIterations":  0,
+                     "latency":  {
+                                     "p50Ms":  5.618,
+                                     "p95Ms":  98.404,
+                                     "p99Ms":  176.051,
+                                     "maxMs":  683.771
+                                 },
+                     "resourcePeaks":  {
+                                           "apiCpuPct":  126.52,
+                                           "postgresCpuPct":  20.99,
+                                           "redisCpuPct":  0.36
+                                       }
+                 },
+                 {
+                     "name":  "240",
+                     "mode":  "high-throttle",
+                     "classification":  "degraded",
+                     "configuredRps":  240,
+                     "duration":  "60s",
+                     "requests":  14401,
+                     "throughputRps":  239.637,
+                     "errorRate":  0,
+                     "checkRate":  1,
+                     "droppedIterations":  0,
+                     "latency":  {
+                                     "p50Ms":  5.74,
+                                     "p95Ms":  25.623,
+                                     "p99Ms":  144.759,
+                                     "maxMs":  471.842
+                                 },
+                     "resourcePeaks":  {
+                                           "apiCpuPct":  119.29,
+                                           "postgresCpuPct":  33.56,
+                                           "redisCpuPct":  0.38
+                                       }
+                 },
+                 {
+                     "name":  "256",
+                     "mode":  "high-throttle",
+                     "classification":  "severely-degraded",
+                     "configuredRps":  256,
+                     "duration":  "60s",
+                     "requests":  15361,
+                     "throughputRps":  255.595,
+                     "errorRate":  0,
+                     "checkRate":  1,
+                     "droppedIterations":  0,
+                     "latency":  {
+                                     "p50Ms":  7.921,
+                                     "p95Ms":  213.491,
+                                     "p99Ms":  504.982,
+                                     "maxMs":  1687.761
+                                 },
+                     "resourcePeaks":  {
+                                           "apiCpuPct":  125.06,
+                                           "postgresCpuPct":  26.5,
+                                           "redisCpuPct":  4.18
+                                       }
+                 }
+             ],
+    "restoredState":  {
+                          "productionThrottleRestored":  true,
+                          "apiHealthStatus":  200
+                      }
+}
