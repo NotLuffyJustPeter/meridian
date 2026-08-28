@@ -1,9 +1,10 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomBytes } from 'node:crypto';
 import * as argon2 from 'argon2';
 
 import { PrismaService } from '../database/prisma.service';
+import { PasswordResetQueueService } from '../jobs/password-reset-queue.service';
 import { EmailService } from './email.service';
 
 const DEFAULT_RESET_TTL_MINUTES = 20;
@@ -14,8 +15,13 @@ export class PasswordResetService {
 
   constructor(
     private readonly prisma: PrismaService,
+
     private readonly configService: ConfigService,
+
     private readonly emailService: EmailService,
+
+    @Optional()
+    private readonly passwordResetQueue?: PasswordResetQueueService,
   ) {}
 
   async requestReset(email: string): Promise<void> {
@@ -36,8 +42,10 @@ export class PasswordResetService {
     await this.prisma.passwordResetToken.updateMany({
       where: {
         userId: user.id,
+
         usedAt: null,
       },
+
       data: {
         usedAt: now,
       },
@@ -47,12 +55,14 @@ export class PasswordResetService {
 
     const tokenHash = this.hashToken(rawToken);
 
-    const expiresAt = new Date(Date.now() + this.getTtlMinutes() * 60 * 1000);
+    const expiresAt = new Date(Date.now() + this.getTtlMinutes() * 60 * 1_000);
 
     const record = await this.prisma.passwordResetToken.create({
       data: {
         userId: user.id,
+
         tokenHash,
+
         expiresAt,
       },
     });
@@ -64,24 +74,33 @@ export class PasswordResetService {
     const resetUrl = `${appOrigin}/reset-password?token=${encodeURIComponent(rawToken)}`;
 
     try {
-      await this.emailService.sendPasswordResetEmail({
-        to: user.email,
-        name: user.name,
-        resetUrl,
-      });
+      if (this.passwordResetQueue?.isEnabled()) {
+        await this.passwordResetQueue.enqueuePasswordReset({
+          resetTokenId: record.id,
+
+          to: user.email,
+
+          name: user.name,
+
+          resetUrl,
+        });
+      } else {
+        await this.emailService.sendPasswordResetEmail({
+          to: user.email,
+
+          name: user.name,
+
+          resetUrl,
+        });
+      }
     } catch (error) {
-      await this.prisma.passwordResetToken.updateMany({
-        where: {
-          id: record.id,
-          usedAt: null,
-        },
-        data: {
-          usedAt: new Date(),
-        },
-      });
+      await this.invalidateToken(record.id);
 
       this.logger.error(
-        'Password reset email could not be delivered',
+        this.passwordResetQueue?.isEnabled()
+          ? 'Password reset email could not be queued'
+          : 'Password reset email could not be delivered',
+
         error instanceof Error ? error.stack : undefined,
       );
     }
@@ -108,11 +127,14 @@ export class PasswordResetService {
       const consumed = await tx.passwordResetToken.updateMany({
         where: {
           id: record.id,
+
           usedAt: null,
+
           expiresAt: {
             gt: now,
           },
         },
+
         data: {
           usedAt: now,
         },
@@ -126,6 +148,7 @@ export class PasswordResetService {
         where: {
           id: record.userId,
         },
+
         data: {
           passwordHash,
         },
@@ -134,8 +157,10 @@ export class PasswordResetService {
       await tx.authSession.updateMany({
         where: {
           userId: record.userId,
+
           revokedAt: null,
         },
+
         data: {
           revokedAt: now,
         },
@@ -144,8 +169,10 @@ export class PasswordResetService {
       await tx.mfaChallenge.updateMany({
         where: {
           userId: record.userId,
+
           consumedAt: null,
         },
+
         data: {
           consumedAt: now,
         },
@@ -154,12 +181,28 @@ export class PasswordResetService {
       await tx.passwordResetToken.updateMany({
         where: {
           userId: record.userId,
+
           usedAt: null,
         },
+
         data: {
           usedAt: now,
         },
       });
+    });
+  }
+
+  private async invalidateToken(id: string): Promise<void> {
+    await this.prisma.passwordResetToken.updateMany({
+      where: {
+        id,
+
+        usedAt: null,
+      },
+
+      data: {
+        usedAt: new Date(),
+      },
     });
   }
 

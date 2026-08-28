@@ -36,6 +36,86 @@ services:
       - "127.0.0.1:1025:1025"
       - "127.0.0.1:8025:8025"
 
+  jaeger:
+    image: cr.jaegertracing.io/jaegertracing/jaeger:2.20.0
+    container_name: meridian-jaeger
+
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:16686:16686"
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: meridian-redis
+
+    restart: unless-stopped
+
+    command:
+      [
+        "redis-server",
+        "--save",
+        "",
+        "--appendonly",
+        "no",
+        "--maxmemory",
+        "128mb",
+        "--maxmemory-policy",
+        "allkeys-lru"
+      ]
+
+    ports:
+      - "127.0.0.1:6379:6379"
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "redis-cli",
+          "ping"
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  queue-redis:
+    image: redis:7.4-alpine
+    container_name: meridian-queue-redis
+
+    restart: unless-stopped
+
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--appendfsync",
+        "everysec",
+        "--maxmemory",
+        "128mb",
+        "--maxmemory-policy",
+        "noeviction"
+      ]
+
+    volumes:
+      - meridian_queue_redis_data:/data
+
+    ports:
+      - "127.0.0.1:6380:6379"
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "redis-cli",
+          "ping"
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   api:
     container_name: meridian-api
 
@@ -59,11 +139,38 @@ services:
       SMTP_SECURE: "false"
       MAIL_FROM: "Meridian <no-reply@meridian.local>"
 
+      REDIS_URL: redis://redis:6379
+      CACHE_GEOCODING_TTL_SECONDS: "86400"
+      CACHE_WEATHER_LOCATION_TTL_SECONDS: "604800"
+      CACHE_WEATHER_FORECAST_TTL_SECONDS: "900"
+
+      QUEUE_ENABLED: "true"
+      QUEUE_REDIS_URL: redis://queue-redis:6379
+
+      OTEL_ENABLED: "true"
+      OTEL_SERVICE_NAME: meridian-api
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://jaeger:4318/v1/traces
+      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: http/protobuf
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
+      OTEL_LOG_LEVEL: WARN
+      OTEL_RESOURCE_ATTRIBUTES: service.namespace=meridian,deployment.environment.name=local
+
     depends_on:
       db:
         condition: service_healthy
+
       mailpit:
         condition: service_started
+
+      jaeger:
+        condition: service_started
+
+      redis:
+        condition: service_healthy
+
+      queue-redis:
+        condition: service_healthy
 
     ports:
       - "3001:3001"
@@ -80,6 +187,60 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+
+  worker:
+    container_name: meridian-worker
+
+    build:
+      context: .
+      target: api
+
+    command:
+      [
+        "node",
+        "apps/api/dist/worker.js"
+      ]
+
+    env_file:
+      - ./apps/api/.env
+
+    restart: unless-stopped
+
+    environment:
+      NODE_ENV: production
+      APP_ORIGIN: http://localhost:3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-meridian}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-meridian}?schema=public
+
+      MAIL_PROVIDER: smtp
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_SECURE: "false"
+      MAIL_FROM: "Meridian <no-reply@meridian.local>"
+
+      QUEUE_ENABLED: "true"
+      QUEUE_REDIS_URL: redis://queue-redis:6379
+
+      OTEL_ENABLED: "true"
+      OTEL_SERVICE_NAME: meridian-worker
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://jaeger:4318/v1/traces
+      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: http/protobuf
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
+      OTEL_LOG_LEVEL: WARN
+      OTEL_RESOURCE_ATTRIBUTES: service.namespace=meridian,deployment.environment.name=local
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+      mailpit:
+        condition: service_started
+
+      jaeger:
+        condition: service_started
+
+      queue-redis:
+        condition: service_healthy
 
   web:
     container_name: meridian-web
@@ -110,3 +271,4 @@ services:
 
 volumes:
   meridian_postgres_data:
+  meridian_queue_redis_data:

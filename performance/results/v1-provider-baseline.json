@@ -1,0 +1,75 @@
+{
+  "benchmarkVersion": 1,
+  "generatedAt": "2026-08-26T22:27:41.6927235Z",
+  "gitCommit": "6708d1d638dc6215118da974711c7f7d4289374b",
+  "datasetCommit": "6708d1d638dc6215118da974711c7f7d4289374b",
+  "methodology": "3 sequential requests per external-provider endpoint",
+  "geocoding": {
+    "query": "Duomo di Milano",
+    "medianMs": 16.747,
+    "runsMs": [
+      16.734,
+      16.747,
+      377.551
+    ]
+  },
+  "weather": {
+    "tripId": "8523183f-3082-470a-8146-36aba86bfd31",
+    "medianMs": 369.733,
+    "runsMs": [
+      368.459,
+      369.733,
+      1448.693
+    ]
+  },
+  "runs": [
+    {
+      "providerTest": "geocoding",
+      "run": 1,
+      "status": 200,
+      "elapsedMs": 377.551,
+      "provider": "nominatim",
+      "detail": "results=1"
+    },
+    {
+      "providerTest": "geocoding",
+      "run": 2,
+      "status": 200,
+      "elapsedMs": 16.734,
+      "provider": "nominatim",
+      "detail": "results=1"
+    },
+    {
+      "providerTest": "geocoding",
+      "run": 3,
+      "status": 200,
+      "elapsedMs": 16.747,
+      "provider": "nominatim",
+      "detail": "results=1"
+    },
+    {
+      "providerTest": "weather",
+      "run": 1,
+      "status": 200,
+      "elapsedMs": 1448.693,
+      "provider": "open-meteo",
+      "detail": "availability=OUT_OF_RANGE"
+    },
+    {
+      "providerTest": "weather",
+      "run": 2,
+      "status": 200,
+      "elapsedMs": 369.733,
+      "provider": "open-meteo",
+      "detail": "availability=OUT_OF_RANGE"
+    },
+    {
+      "providerTest": "weather",
+      "run": 3,
+      "status": 200,
+      "elapsedMs": 368.459,
+      "provider": "open-meteo",
+      "detail": "availability=OUT_OF_RANGE"
+    }
+  ]
+}
